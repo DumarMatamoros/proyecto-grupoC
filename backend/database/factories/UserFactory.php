@@ -23,11 +23,14 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $tipos = ['empleado', 'cliente', 'proveedor', 'administrador'];
+        
         return [
-            'name' => fake()->name(),
+            'nombre' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'tipo' => fake()->randomElement($tipos),
             'remember_token' => Str::random(10),
         ];
     }
