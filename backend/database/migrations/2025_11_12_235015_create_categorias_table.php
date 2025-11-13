@@ -9,10 +9,13 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
+    //Creacion de la tabla categorias
     public function up(): void
     {
         Schema::create('categorias', function (Blueprint $table) {
-            $table->id();
+            $table->id('categoria_id');
+            $table->string('nombre');
+            $table->text('descripcion')->nullable();
             $table->timestamps();
         });
     }

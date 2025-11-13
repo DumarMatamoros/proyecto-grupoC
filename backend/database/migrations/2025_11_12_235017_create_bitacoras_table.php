@@ -9,11 +9,18 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
+    //Creacion de la tabla bitacoras con llave foranea a empleados
     public function up(): void
     {
         Schema::create('bitacoras', function (Blueprint $table) {
-            $table->id();
+            $table->id('log_id');
+            $table->string('accion');
+            $table->dateTime('fecha_hora');
+            $table->text('detalle')->nullable();
             $table->timestamps();
+
+            $table->unsignedBigInteger('empleado_id');
+            $table->foreign('empleado_id')->references('empleado_id')->on('empleados');
         });
     }
 

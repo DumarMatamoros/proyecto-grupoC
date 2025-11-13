@@ -9,24 +9,29 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
+    //Creacion de la tabla usuarios con campos basicos y autenticacion
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
+        // Campos basicos de la tabla usuarios
+        Schema::create('usuarios', function (Blueprint $table) {
+            $table->id('usuario_id');
+            $table->string('nombre');
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('tipo'); // 'empleado', 'cliente', 'proveedor', 'administrador'
+            $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
 
+        // Tablas adicionales para gestion de autenticacion
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
         });
-
+        
+        // Tabla para sesiones de usuario
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->foreignId('user_id')->nullable()->index();
@@ -42,7 +47,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
+        Schema::dropIfExists('usuarios');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
     }

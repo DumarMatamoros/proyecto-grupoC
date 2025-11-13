@@ -9,10 +9,14 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
+    //Creacion de la tabla sucursales
     public function up(): void
     {
         Schema::create('sucursales', function (Blueprint $table) {
-            $table->id();
+            $table->id('sucursal_id');
+            $table->string('nombre');
+            $table->string('direccion');
+            $table->string('punto_emision');
             $table->timestamps();
         });
     }

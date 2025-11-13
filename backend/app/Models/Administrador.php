@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Bitacora extends Model
+class Administrador extends Model
 {
     use HasFactory;
 
@@ -14,14 +14,14 @@ class Bitacora extends Model
      *
      * @var string
      */
-    protected $table = 'bitacoras';
+    protected $table = 'administradores';
 
     /**
      * La clave primaria asociada con la tabla.
      *
      * @var string
      */
-    protected $primaryKey = 'log_id';
+    protected $primaryKey = 'administrador_id';
 
     /**
      * Los atributos que son asignables en masa.
@@ -29,24 +29,25 @@ class Bitacora extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'accion',
-        'fecha_hora',
-        'detalle',
-        'empleado_id',
+        'usuario_id',
+        'nivel',
+        'permisos',
     ];
 
     /**
-     * Indica si el modelo debe tener timestamps.
+     * Los atributos que deben ser convertidos.
      *
-     * @var bool
+     * @var array
      */
-    public $timestamps = false;
+    protected $casts = [
+        'permisos' => 'json',
+    ];
 
     /**
-     * Obtiene el empleado que realizó la acción.
+     * Obtiene el usuario asociado a este administrador.
      */
-    public function empleado()
+    public function usuario()
     {
-        return $this->belongsTo(Empleado::class, 'empleado_id');
+        return $this->belongsTo(User::class, 'usuario_id', 'usuario_id');
     }
 }

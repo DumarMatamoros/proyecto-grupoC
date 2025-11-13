@@ -9,10 +9,13 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
+    //Creacion de la tabla impuestos
     public function up(): void
     {
-        Schema::create('empleados', function (Blueprint $table) {
-            $table->id();
+        Schema::create('impuestos', function (Blueprint $table) {
+            $table->id('impuesto_id');
+            $table->string('tipo');
+            $table->decimal('porcentaje', 5, 2);
             $table->timestamps();
         });
     }
@@ -22,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('empleados');
+        Schema::dropIfExists('impuestos');
     }
 };
