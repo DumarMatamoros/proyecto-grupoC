@@ -1,0 +1,142 @@
+/* CONTENEDOR PRINCIPAL */
+.login-container {
+  width: 100%;
+  height: 100vh;
+  background: #f4f6f8;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* CAJA PRINCIPAL */
+.login-box {
+  width: 900px;
+  height: 520px;
+  background: #fff;
+  border-radius: 20px;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0px 5px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* FORMULARIO */
+.login-form {
+  width: 50%;
+  padding: 50px;
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-size: 22px;
+  color: #333;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin-top: 10px;
+  margin-bottom: 30px;
+  color: #666;
+}
+
+/* LABELS & INPUT */
+form label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #444;
+}
+
+form input {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0 18px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+}
+
+form input:focus {
+  outline: none;
+  border-color: #ff7b38;
+  box-shadow: 0 0 5px rgba(255, 123, 56, 0.5);
+}
+
+/* BOTÓN INGRESAR */
+.btn-login {
+  width: 100%;
+  padding: 12px;
+  background: #ff7b38;
+  border: none;
+  color: white;
+  font-size: 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+  font-weight: bold;
+}
+
+.btn-login:hover {
+  background: #e76729;
+}
+
+/* ❗ NUEVO: BOTÓN CREAR USUARIO */
+.btn-secondary {
+  width: 100%;
+  padding: 12px;
+  background: #2563eb;
+  border: none;
+  color: white;
+  font-size: 15px;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: 0.2s;
+  font-weight: 600;
+}
+
+.btn-secondary:hover {
+  background: #1e40af;
+}
+
+/* ❗ NUEVO: BOTÓN OLVIDAR CONTRASEÑA */
+.btn-link {
+  background: none;
+  border: none;
+  color: #ff7b38;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 10px;
+  text-decoration: underline;
+  display: block;
+}
+
+/* COPYRIGHT */
+.copy {
+  margin-top: auto;
+  font-size: 12px;
+  color: #777;
+  text-align: center;
+}
+
+/* IMAGEN DERECHA */
+.login-image {
+  width: 50%;
+  background: #1d1e4a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* MENSAJE DE ERROR */
+.error {
+  color: red;
+  font-size: 14px;
+  margin-bottom: 10px;
+  text-align: center;
+}
