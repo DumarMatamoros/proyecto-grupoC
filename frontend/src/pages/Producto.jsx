@@ -294,8 +294,8 @@ export default function InventoryPage() {
   // VISTA
   // ============================
   return (
-    <div className="p-8 bg-gray-100 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <div className="flex justify-between items-center mb-5">
         <h1 className="text-3xl font-bold flex items-center gap-3">
           <FaBox className="text-blue-600" />
           Gestión de Productos
@@ -303,7 +303,7 @@ export default function InventoryPage() {
       </div>
 
       {/* BUSCADOR Y BOTÓN */}
-      <div className="flex gap-4 mb-6 items-center">
+      <div className="flex gap-4 mb-5">
         <input
           placeholder="🔍 Buscar por nombre o código..."
           className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -325,7 +325,7 @@ export default function InventoryPage() {
       </div>
 
       {/* TABLA */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
+      <div className="bg-white rounded-xl shadow-lg p-5">
         {loading ? (
           <LoadingSpinner text="Cargando productos..." />
         ) : productos.length === 0 ? (
@@ -434,24 +434,24 @@ export default function InventoryPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-100 text-gray-700 uppercase text-sm font-semibold">
-                  {visibleCols.imagen && <th className="px-4 py-3">Imagen</th>}
-                  {visibleCols.codigo && <th className="px-4 py-3">Código</th>}
+                  {visibleCols.imagen && <th className="px-3 py-2.5">Imagen</th>}
+                  {visibleCols.codigo && <th className="px-3 py-2.5">Código</th>}
                   {visibleCols.codigo_barras && (
-                    <th className="px-4 py-3">Código de Barras</th>
+                    <th className="px-3 py-2.5">Cód. Barras</th>
                   )}
-                  <th className="px-4 py-3">Nombre</th>
-                  {visibleCols.descripcion && <th className="px-4 py-3">Descripción</th>}
-                  {visibleCols.categoria && <th className="px-4 py-3">Categoría</th>}
-                  {visibleCols.stock && <th className="px-4 py-3">Stock</th>}
+                  <th className="px-3 py-2.5">Nombre</th>
+                  {visibleCols.descripcion && <th className="px-3 py-2.5">Descripción</th>}
+                  {visibleCols.categoria && <th className="px-3 py-2.5">Categoría</th>}
+                  {visibleCols.stock && <th className="px-3 py-2.5">Stock</th>}
                   {visibleCols.precio_costo && (
-                    <th className="px-4 py-3">Precio de Costo</th>
+                    <th className="px-3 py-2.5">P. Costo</th>
                   )}
                   {visibleCols.precio_venta && (
-                    <th className="px-4 py-3">Precio de Venta</th>
+                    <th className="px-3 py-2.5">P. Venta</th>
                   )}
-                  {visibleCols.iva && <th className="px-4 py-3">IVA</th>}
-                  {visibleCols.ice && <th className="px-4 py-3">ICE</th>}
-                  <th className="px-4 py-3 text-center">Acciones</th>
+                  {visibleCols.iva && <th className="px-3 py-2.5 text-center">IVA</th>}
+                  {visibleCols.ice && <th className="px-3 py-2.5 text-center">ICE</th>}
+                  <th className="px-3 py-2.5 text-center">Acciones</th>
                 </tr>
               </thead>
 
@@ -471,7 +471,7 @@ export default function InventoryPage() {
                       className="border-b hover:bg-gray-50 transition"
                     >
                       {visibleCols.imagen && (
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2.5">
                           <ImageWithFallback
                             src={
                               p.imagen
@@ -484,38 +484,38 @@ export default function InventoryPage() {
                       )}
 
                       {visibleCols.codigo && (
-                        <td className="px-4 py-3 font-medium">{p.codigo_principal}</td>
+                        <td className="px-3 py-2.5 font-medium">{p.codigo_principal}</td>
                       )}
                       {visibleCols.codigo_barras && (
-                        <td className="px-4 py-3">{p.codigo_barras ?? "-"}</td>
+                        <td className="px-3 py-2.5">{p.codigo_barras ?? "-"}</td>
                       )}
-                      <td className="px-4 py-3">{p.nombre}</td>
+                      <td className="px-3 py-2.5">{p.nombre}</td>
                       {visibleCols.descripcion && (
-                        <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{p.descripcion || "-"}</td>
+                        <td className="px-3 py-2.5 text-gray-600 max-w-xs truncate">{p.descripcion || "-"}</td>
                       )}
                       {visibleCols.categoria && (
-                        <td className="px-4 py-3">{p.categoria?.nombre ?? "Sin categoría"}</td>
+                        <td className="px-3 py-2.5">{p.categoria?.nombre ?? "Sin categoría"}</td>
                       )}
                       {visibleCols.stock && (
-                        <td className="px-4 py-3">{p.stock_actual}</td>
+                        <td className="px-3 py-2.5 text-center">{p.stock_actual}</td>
                       )}
                       {visibleCols.precio_costo && (
-                        <td className="px-4 py-3">${p.precio_costo ?? "0.00"}</td>
+                        <td className="px-3 py-2.5">${p.precio_costo ?? "0.00"}</td>
                       )}
                       {visibleCols.precio_venta && (
-                        <td className="px-4 py-3">${p.precio_unitario}</td>
+                        <td className="px-3 py-2.5">${p.precio_unitario}</td>
                       )}
                       {visibleCols.iva && (
-                        <td className="px-4 py-3">{p.iva_aplica ? "✓" : "✗"}</td>
+                        <td className="px-3 py-2.5 text-center">{p.iva_aplica ? "✓" : "✗"}</td>
                       )}
                       {visibleCols.ice && (
-                        <td className="px-4 py-3">{p.ice_aplica ? "✓" : "✗"}</td>
+                        <td className="px-3 py-2.5 text-center">{p.ice_aplica ? "✓" : "✗"}</td>
                       )}
 
-                      <td className="px-4 py-3 flex gap-2 justify-center">
+                      <td className="px-3 py-2.5 flex gap-2 justify-center">
                         <button
                           onClick={() => abrirEditar(p)}
-                          className="w-10 h-10 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded transition"
+                          className="w-9 h-9 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded transition"
                           title="Editar"
                         >
                           <FaEdit size={16} />
@@ -523,7 +523,7 @@ export default function InventoryPage() {
 
                         <button
                           onClick={() => eliminarProducto(p.producto_id)}
-                          className="w-10 h-10 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded transition"
+                          className="w-9 h-9 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded transition"
                           title="Eliminar"
                         >
                           <FaTrash size={16} />
@@ -563,17 +563,17 @@ export default function InventoryPage() {
 
       
       {importModal && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 z-50" style={{ backgroundColor: "rgba(0, 0, 0, 0.15)" }}>
-          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-4xl relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 flex items-center justify-center p-3 sm:p-4 z-50" style={{ backgroundColor: "rgba(0, 0, 0, 0.15)" }}>
+          <div className="bg-white rounded-lg sm:rounded-xl shadow-2xl p-4 sm:p-6 lg:p-8 w-full max-w-4xl relative max-h-[90vh] overflow-y-auto">
             <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition text-2xl"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-gray-600 transition"
               onClick={() => setImportModal(false)}
               title="Cerrar"
             >
-              <FaTimes size={20} />
+              <FaTimes size={18} className="sm:w-5 sm:h-5" />
             </button>
 
-            <h2 className="text-2xl font-bold mb-8 pr-8">Importación de Productos (CSV)</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 lg:mb-8 pr-8">Importación de Productos (CSV)</h2>
 
             {!importPreview && (
               <div className="space-y-6">
@@ -695,27 +695,27 @@ export default function InventoryPage() {
 
       {/* MODAL */}
       {modal && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 z-50" style={{ backgroundColor: "rgba(0, 0, 0, 0.15)" }}>
+        <div className="fixed inset-0 flex items-center justify-center p-3 sm:p-4 z-50" style={{ backgroundColor: "rgba(0, 0, 0, 0.15)" }}>
           <div
             onDragOver={handleDrag}
             onDrop={handleDrop}
-            className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-4xl relative max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-lg sm:rounded-xl shadow-2xl p-4 sm:p-6 lg:p-8 w-full max-w-4xl relative max-h-[90vh] overflow-y-auto"
           >
             <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition text-2xl"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-gray-600 transition"
               onClick={() => setModal(false)}
               title="Cerrar"
             >
-              <FaTimes size={20} />
+              <FaTimes size={18} className="sm:w-5 sm:h-5" />
             </button>
 
-            <h2 className="text-2xl font-bold mb-8 pr-8">
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 lg:mb-8 pr-8">
               {editing ? "Editar Producto" : "Nuevo Producto"}
             </h2>
 
             {/* PREVIEW */}
             <div
-              className={`w-48 h-48 mx-auto mb-8 rounded-xl border-2 flex items-center justify-center cursor-pointer transition ${
+              className={`w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 mx-auto mb-4 sm:mb-6 lg:mb-8 rounded-lg sm:rounded-xl border-2 flex items-center justify-center cursor-pointer transition ${
                 dragActive
                   ? "bg-blue-50 border-blue-400"
                   : "bg-gray-50 border-gray-300 border-dashed"
@@ -725,11 +725,11 @@ export default function InventoryPage() {
               {preview ? (
                 <img
                   src={preview}
-                  className="w-full h-full rounded-xl object-cover"
+                  className="w-full h-full rounded-lg sm:rounded-xl object-cover"
                 />
               ) : (
-                <div className="text-center text-gray-500">
-                  <div className="text-sm">Arrastre o seleccione un archivo</div>
+                <div className="text-center text-gray-500 px-2">
+                  <div className="text-xs sm:text-sm">Arrastre o seleccione un archivo</div>
                 </div>
               )}
             </div>
@@ -743,51 +743,51 @@ export default function InventoryPage() {
             />
 
             {/* FORM */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Código</label>
                   <input
                     name="codigo_principal"
                     placeholder="Código único del producto"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
                     onChange={handleChange}
                     value={form.codigo_principal}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Nombre</label>
                   <input
                     name="nombre"
                     placeholder="Nombre del producto"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
                     onChange={handleChange}
                     value={form.nombre}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Precio</label>
                   <input
                     name="precio_unitario"
                     placeholder="0.00"
                     type="number"
                     step="0.01"
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
                     onChange={handleChange}
                     value={form.precio_unitario}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Stock</label>
                   <input
                     name="stock_actual"
                     placeholder="0"
                     type="number"
                     disabled={editing ? true : false}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
+                    className={`w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base ${
                       editing ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""
                     }`}
                     onChange={handleChange}
@@ -799,10 +799,10 @@ export default function InventoryPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Categoría</label>
                 <select
                   name="categoria_id"
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
                   onChange={handleChange}
                   value={form.categoria_id}
                 >
@@ -816,11 +816,11 @@ export default function InventoryPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Descripción</label>
                 <textarea
                   name="descripcion"
                   placeholder="Descripción del producto"
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
                   rows="3"
                   onChange={handleChange}
                   value={form.descripcion}
@@ -854,16 +854,16 @@ export default function InventoryPage() {
             </div>
 
             {/* BOTONES */}
-            <div className="flex gap-3 mt-8">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4 sm:mt-6 lg:mt-8">
               <button
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 sm:py-3 rounded-lg font-semibold transition disabled:opacity-50 text-sm sm:text-base"
                 onClick={guardarProducto}
               >
                 {editing ? "Actualizar Producto" : "Guardar Producto"}
               </button>
 
               <button
-                className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-3 rounded-lg font-semibold transition"
+                className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2.5 sm:py-3 rounded-lg font-semibold transition text-sm sm:text-base"
                 onClick={() => setModal(false)}
               >
                 Cancelar

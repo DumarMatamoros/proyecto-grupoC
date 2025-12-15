@@ -16,18 +16,12 @@ copy .env.example .env
 ```
 Edita `backend/.env` con PostgreSQL:
 ```
-APP_ENV=local
-APP_DEBUG=true
-APP_URL=http://localhost
-
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
 DB_DATABASE=db_facturacion
 DB_USERNAME=admin
 DB_PASSWORD=admin
-
-VITE_API_URL=http://localhost:8000
 ```
 
 ### 2.3 Generar clave de aplicación
@@ -70,7 +64,7 @@ npm install
 ### 3.2 Configurar `.env` del frontend
 Edita `frontend/.env`:
 ```
-VITE_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8000/api
 ```
 
 ### 3.3 Levantar Vite
