@@ -29,6 +29,23 @@ class CategoriaController extends Controller
         ], 201);
     }
 
+    // ACTUALIZAR CATEGORÍA
+    public function update(Request $request, $id)
+    {
+        $categoria = Categoria::findOrFail($id);
+
+        $request->validate([
+            'nombre' => 'required|string|max:255',
+            'descripcion' => 'nullable|string'
+        ]);
+
+        $categoria->update($request->all());
+
+        return response()->json([
+            "message" => "Categoría actualizada correctamente"
+        ]);
+    }
+
     // ELIMINAR CATEGORÍA
     public function destroy($id)
     {

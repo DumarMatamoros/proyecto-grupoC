@@ -31,6 +31,35 @@ const authService = {
     return user ? JSON.parse(user) : null;
   },
 
+  fetchMe: async () => {
+    const res = await api.get("/auth/me");
+    if (res?.data?.success) {
+      const usuario = res.data.data;
+      localStorage.setItem("user", JSON.stringify(usuario));
+      return usuario;
+    }
+    throw new Error("No se pudo validar la sesión");
+  },
+
+  ensureAuth: async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+    try {
+      const user = await authService.fetchMe();
+      return user;
+    } catch (e) {
+      authService.logout();
+      return null;
+    }
+  },
+
+  hasRole: (allowed = []) => {
+    const user = authService.getUser();
+    if (!user) return false;
+    if (!Array.isArray(allowed) || allowed.length === 0) return true;
+    return allowed.includes(user.tipo);
+  },
+
   isAuthenticated: () => {
     const token = localStorage.getItem("token");
     return token !== null && token !== undefined && token !== "";

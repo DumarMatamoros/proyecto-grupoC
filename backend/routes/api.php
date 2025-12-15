@@ -35,16 +35,8 @@ Route::get('/health', function () {
     }
 });
 
-// CATEGORÍAS
-Route::get('/categorias', [CategoriaController::class, 'index']);
-Route::post('/categorias', [CategoriaController::class, 'store']);
-Route::delete('/categorias/{id}', [CategoriaController::class, 'destroy']);
-
-// PRODUCTOS (públicos, sin token)
-Route::get('/productos', [ProductoController::class, 'index']);
-Route::post('/productos', [ProductoController::class, 'store']);
-Route::put('/productos/{id}', [ProductoController::class, 'update']);   // ✔ CORRECTO
-Route::delete('/productos/{id}', [ProductoController::class, 'destroy']);
+// CATEGORÍAS (mover a rutas protegidas)
+// PRODUCTOS (mover a rutas protegidas)
 
 // AUTENTICACIÓN
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -60,6 +52,29 @@ Route::get('/config/iva', [ConfiguracionController::class, 'obtenerIVA']);
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->group(function () {
+    // CATEGORÍAS
+    Route::get('/categorias', [CategoriaController::class, 'index'])
+        ->middleware('check.role:administrador,empleado');
+    Route::post('/categorias', [CategoriaController::class, 'store'])
+        ->middleware('check.role:administrador');
+    Route::put('/categorias/{id}', [CategoriaController::class, 'update'])
+        ->middleware('check.role:administrador');
+    Route::delete('/categorias/{id}', [CategoriaController::class, 'destroy'])
+        ->middleware('check.role:administrador');
+
+    // PRODUCTOS
+    Route::get('/productos', [ProductoController::class, 'index'])
+        ->middleware('check.role:administrador,empleado');
+    Route::post('/productos', [ProductoController::class, 'store'])
+        ->middleware('check.role:administrador,empleado');
+    Route::put('/productos/{id}', [ProductoController::class, 'update'])
+        ->middleware('check.role:administrador,empleado');
+    Route::delete('/productos/{id}', [ProductoController::class, 'destroy'])
+        ->middleware('check.role:administrador');
+    Route::post('/productos/import/preview', [ProductoController::class, 'importPreview'])
+        ->middleware('check.role:administrador,empleado');
+    Route::post('/productos/import/confirm', [ProductoController::class, 'importConfirm'])
+        ->middleware('check.role:administrador,empleado');
 
     // AUTH
     Route::post('/auth/logout', [AuthController::class, 'logout']);

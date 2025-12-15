@@ -14,7 +14,7 @@ export default function Login() {
 
     try {
       await authService.login(email, password);
-      navigate("/panel");
+      navigate("/dashboard");
     } catch (err) {
       setError("Credenciales incorrectas");
     }
