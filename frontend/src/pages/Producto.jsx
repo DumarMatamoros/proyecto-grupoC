@@ -335,7 +335,8 @@ export default function InventoryPage() {
             description="No hay productos registrados"
           />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {/* Menú de columnas FUERA del scroll */}
             <div className="flex justify-end mb-2 relative">
               <button
                 aria-label="Mostrar filtros de columnas"
@@ -343,7 +344,7 @@ export default function InventoryPage() {
                 title="Mostrar/ocultar columnas"
                 onClick={() => setShowColumnsMenu((v) => !v)}
               >
-                <FaSlidersH size={16} />
+                <FaSlidersH className="text-base" />
               </button>
               {showColumnsMenu && (
                 <div className="absolute right-0 top-9 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-10 w-56">
@@ -431,27 +432,30 @@ export default function InventoryPage() {
                 </div>
               )}
             </div>
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-100 text-gray-700 uppercase text-sm font-semibold">
-                  {visibleCols.imagen && <th className="px-3 py-2.5">Imagen</th>}
-                  {visibleCols.codigo && <th className="px-3 py-2.5">Código</th>}
-                  {visibleCols.codigo_barras && (
-                    <th className="px-3 py-2.5">Cód. Barras</th>
-                  )}
-                  <th className="px-3 py-2.5">Nombre</th>
-                  {visibleCols.descripcion && <th className="px-3 py-2.5">Descripción</th>}
-                  {visibleCols.categoria && <th className="px-3 py-2.5">Categoría</th>}
-                  {visibleCols.stock && <th className="px-3 py-2.5">Stock</th>}
+
+            {/* Tabla responsiva que escala al contenedor */}
+            <div className="w-full">
+              <table className="w-full text-left border-collapse table-fixed">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-700 uppercase text-xs font-semibold">
+                    {visibleCols.imagen && <th className="px-2 py-2 w-14">Imagen</th>}
+                    {visibleCols.codigo && <th className="px-2 py-2">Código</th>}
+                    {visibleCols.codigo_barras && (
+                      <th className="px-2 py-2">Cód. Barras</th>
+                    )}
+                    <th className="px-2 py-2">Nombre</th>
+                    {visibleCols.descripcion && <th className="px-2 py-2">Descripción</th>}
+                    {visibleCols.categoria && <th className="px-2 py-2">Categoría</th>}
+                  {visibleCols.stock && <th className="px-2 py-2 w-16 text-center">Stock</th>}
                   {visibleCols.precio_costo && (
-                    <th className="px-3 py-2.5">P. Costo</th>
+                    <th className="px-2 py-2 w-20">P. Costo</th>
                   )}
                   {visibleCols.precio_venta && (
-                    <th className="px-3 py-2.5">P. Venta</th>
+                    <th className="px-2 py-2 w-20">P. Venta</th>
                   )}
-                  {visibleCols.iva && <th className="px-3 py-2.5 text-center">IVA</th>}
-                  {visibleCols.ice && <th className="px-3 py-2.5 text-center">ICE</th>}
-                  <th className="px-3 py-2.5 text-center">Acciones</th>
+                  {visibleCols.iva && <th className="px-2 py-2 w-12 text-center">IVA</th>}
+                  {visibleCols.ice && <th className="px-2 py-2 w-12 text-center">ICE</th>}
+                  <th className="px-2 py-2 w-24 text-center">Acciones</th>
                 </tr>
               </thead>
 
@@ -471,69 +475,72 @@ export default function InventoryPage() {
                       className="border-b hover:bg-gray-50 transition"
                     >
                       {visibleCols.imagen && (
-                        <td className="px-3 py-2.5">
+                        <td className="px-2 py-2">
                           <ImageWithFallback
                             src={
                               p.imagen
                                 ? `http://127.0.0.1:8000/storage/${p.imagen}`
                                 : null
                             }
-                            className="w-12 h-12 object-cover rounded"
+                            className="w-10 h-10 object-cover rounded"
                           />
                         </td>
                       )}
 
                       {visibleCols.codigo && (
-                        <td className="px-3 py-2.5 font-medium">{p.codigo_principal}</td>
+                        <td className="px-2 py-2 font-medium text-sm truncate">{p.codigo_principal}</td>
                       )}
                       {visibleCols.codigo_barras && (
-                        <td className="px-3 py-2.5">{p.codigo_barras ?? "-"}</td>
+                        <td className="px-2 py-2 text-sm truncate">{p.codigo_barras ?? "-"}</td>
                       )}
-                      <td className="px-3 py-2.5">{p.nombre}</td>
+                      <td className="px-2 py-2 text-sm truncate">{p.nombre}</td>
                       {visibleCols.descripcion && (
-                        <td className="px-3 py-2.5 text-gray-600 max-w-xs truncate">{p.descripcion || "-"}</td>
+                        <td className="px-2 py-2 text-gray-600 text-sm truncate">{p.descripcion || "-"}</td>
                       )}
                       {visibleCols.categoria && (
-                        <td className="px-3 py-2.5">{p.categoria?.nombre ?? "Sin categoría"}</td>
+                        <td className="px-2 py-2 text-sm truncate">{p.categoria?.nombre ?? "Sin categoría"}</td>
                       )}
                       {visibleCols.stock && (
-                        <td className="px-3 py-2.5 text-center">{p.stock_actual}</td>
+                        <td className="px-2 py-2 text-center text-sm">{p.stock_actual}</td>
                       )}
                       {visibleCols.precio_costo && (
-                        <td className="px-3 py-2.5">${p.precio_costo ?? "0.00"}</td>
+                        <td className="px-2 py-2 text-sm">${p.precio_costo ?? "0.00"}</td>
                       )}
                       {visibleCols.precio_venta && (
-                        <td className="px-3 py-2.5">${p.precio_unitario}</td>
+                        <td className="px-2 py-2 text-sm">${p.precio_unitario}</td>
                       )}
                       {visibleCols.iva && (
-                        <td className="px-3 py-2.5 text-center">{p.iva_aplica ? "✓" : "✗"}</td>
+                        <td className="px-2 py-2 text-center text-sm">{p.iva_aplica ? "✓" : "✗"}</td>
                       )}
                       {visibleCols.ice && (
-                        <td className="px-3 py-2.5 text-center">{p.ice_aplica ? "✓" : "✗"}</td>
+                        <td className="px-2 py-2 text-center text-sm">{p.ice_aplica ? "✓" : "✗"}</td>
                       )}
 
-                      <td className="px-3 py-2.5 flex gap-2 justify-center">
-                        <button
-                          onClick={() => abrirEditar(p)}
-                          className="w-9 h-9 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded transition"
-                          title="Editar"
-                        >
-                          <FaEdit size={16} />
-                        </button>
+                      <td className="px-2 py-2">
+                        <div className="flex gap-1 justify-center">
+                          <button
+                            onClick={() => abrirEditar(p)}
+                            className="w-8 h-8 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded transition"
+                            title="Editar"
+                          >
+                            <FaEdit className="text-sm" />
+                          </button>
 
-                        <button
-                          onClick={() => eliminarProducto(p.producto_id)}
-                          className="w-9 h-9 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded transition"
-                          title="Eliminar"
-                        >
-                          <FaTrash size={16} />
-                        </button>
+                          <button
+                            onClick={() => eliminarProducto(p.producto_id)}
+                            className="w-8 h-8 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded transition"
+                            title="Eliminar"
+                          >
+                            <FaTrash className="text-sm" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+          </>
         )}
         {productos.length > 0 && (
           <Pagination
@@ -570,7 +577,7 @@ export default function InventoryPage() {
               onClick={() => setImportModal(false)}
               title="Cerrar"
             >
-              <FaTimes size={18} className="sm:w-5 sm:h-5" />
+              <FaTimes className="text-base sm:text-lg" />
             </button>
 
             <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 lg:mb-8 pr-8">Importación de Productos (CSV)</h2>
@@ -706,7 +713,7 @@ export default function InventoryPage() {
               onClick={() => setModal(false)}
               title="Cerrar"
             >
-              <FaTimes size={18} className="sm:w-5 sm:h-5" />
+              <FaTimes className="text-base sm:text-lg" />
             </button>
 
             <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 lg:mb-8 pr-8">
