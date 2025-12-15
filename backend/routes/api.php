@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 
 // Controladores
 use App\Http\Controllers\Api\AuthController;
@@ -16,6 +17,23 @@ use App\Http\Controllers\Api\CategoriaController;
 | RUTAS PÚBLICAS
 |--------------------------------------------------------------------------
 */
+
+// Health check (estado de app y conexión a BD)
+Route::get('/health', function () {
+    try {
+        DB::connection()->getPdo();
+        return response()->json([
+            'status' => 'ok',
+            'database' => 'connected',
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'database' => 'disconnected',
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+});
 
 // CATEGORÍAS
 Route::get('/categorias', [CategoriaController::class, 'index']);

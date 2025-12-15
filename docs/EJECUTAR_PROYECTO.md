@@ -1,103 +1,124 @@
-# 🚀 Cómo Ejecutar el Proyecto
+# 🚀 Guía completa: ejecutar proyecto desde cero (Windows)
 
-## ✅ Base de Datos Preparada
+## 2️ Backend (Laravel)
 
-La base de datos ha sido limpiada y levantada exitosamente con:
-- ✅ Todas las tablas creadas
-- ✅ Datos iniciales cargados (seeders)
-- ✅ Usuario admin creado: `admin@example.com` / `password`
-
----
-
-## 1️⃣ Iniciar el Backend (Laravel)
-
-En una terminal, en la carpeta `backend`:
-
-```bash
+### 2.1 Instalar dependencias
+```powershell
 cd backend
-php artisan serve
+composer install
+npm install
 ```
 
-Verás:
+### 2.2 Crear y configurar `.env`
+Copia el ejemplo si existe y ajusta:
+```powershell
+copy .env.example .env
 ```
-Laravel development server started: http://127.0.0.1:8000
+Edita `backend/.env` con PostgreSQL:
 ```
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost
+
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=db_facturacion
+DB_USERNAME=admin
+DB_PASSWORD=admin
+
+VITE_API_URL=http://localhost:8000
+```
+
+### 2.3 Generar clave de aplicación
+```powershell
+php artisan key:generate
+```
+
+### 2.4 Habilitar extensiones PHP (si fuera necesario)
+Si al migrar aparece `Call to undefined function mb_split()`, habilita `mbstring` y verifica PostgreSQL:
+```powershell
+php --ini
+# Edita php.ini y asegúrate de tener:
+# extension=mbstring
+# extension=pgsql
+# extension=pdo_pgsql
+php -m
+```
+
+### 2.5 Migrar y seedear la base de datos
+```powershell
+php artisan migrate --seed
+```
+
+### 2.6 Levantar servidor de desarrollo
+```powershell
+php artisan serve --host=127.0.0.1 --port=8000
+```
+Back disponible en: http://127.0.0.1:8000
 
 ---
 
-## 2️⃣ Iniciar el Frontend (React + Vite)
+## 3️⃣ Frontend (React + Vite)
 
-En otra terminal, en la carpeta `frontend`:
+### 3.1 Instalar dependencias
+```powershell
+cd ..\frontend
+npm install
+```
 
-```bash
-cd frontend
+### 3.2 Configurar `.env` del frontend
+Edita `frontend/.env`:
+```
+VITE_API_URL=http://localhost:8000
+```
+
+### 3.3 Levantar Vite
+```powershell
 npm run dev
 ```
-
-Verás:
-```
-➜  Local:   http://localhost:5173/
-```
+Frontend disponible en: http://localhost:5173/
 
 ---
 
-## 3️⃣ Acceder a la Aplicación
+## 4️⃣ Probar la aplicación
 
-- **Frontend**: http://localhost:5173/
-- **Backend API**: http://localhost:8000/api
-
----
-
-## 🔑 Credenciales de Prueba
-
-| Usuario | Email | Contraseña |
-|---------|-------|-----------|
-| Admin | admin@example.com | password |
+- Frontend: http://localhost:5173/
+- API base: http://localhost:8000
+- Endpoints API típicos: ver [docs/EJEMPLOS_POSTMAN.md](../docs/EJEMPLOS_POSTMAN.md)
 
 ---
 
-## 📝 Pruebas Rápidas
+## 🔑 Credenciales de prueba
 
-### Login en Postman
-```
-POST http://localhost:8000/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "admin@example.com",
-  "password": "password"
-}
-```
-
-### Obtener Lista de Usuarios
-```
-GET http://localhost:8000/api/usuarios
-Authorization: Bearer {tu_token}
-```
+- Admin: `admin@example.com` / `password` (ver seeders si aplica)
 
 ---
 
-## 🗄️ Limpiar y Recrear BD (si es necesario)
+## 🛠️ Troubleshooting
 
-```bash
+- Error `mb_split`: habilita `extension=mbstring` en `php.ini` y reinicia CLI.
+- Conexión PostgreSQL: verifica servicio activo y credenciales en `backend/.env`.
+- CORS: si el frontend no accede a la API, revisa `config/cors.php` en Laravel.
+
+---
+
+## 🗄️ Limpiar y recrear BD
+```powershell
 cd backend
 php artisan migrate:fresh --seed
 ```
 
 ---
 
-## 🆘 Comandos Útiles
-
-```bash
-# Ver logs en tiempo real
-php artisan logs
-
+## 🧪 Comandos útiles
+```powershell
 # Ejecutar tests
 php artisan test
 
-# Optimizar cache
+# Limpiar caches
 php artisan optimize:clear
 php artisan cache:clear
 ```
 
-¡Listo! El proyecto está preparado para ejecutar. 🎉
+¡Listo! Con esto puedes levantar el proyecto desde cero. 🎉
