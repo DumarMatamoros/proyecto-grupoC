@@ -18,8 +18,10 @@ class Producto extends Model
 
     protected $fillable = [
         'codigo_principal',
+        'codigo_barras',
         'nombre',
         'descripcion',
+        'precio_costo',
         'precio_unitario',
         'stock_actual',
         'iva_aplica',
