@@ -48,13 +48,13 @@ export default function ToastNotification() {
   };
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-3 max-w-md">
+    <div className="fixed top-4 right-4 z-[9999] space-y-3 max-w-md pointer-events-none">
       {toasts.map((toast) => (
         <div
           key={toast.id}
           className={`flex items-center gap-4 p-4 rounded-lg shadow-lg ${getBgColor(
             toast.type
-          )} animate-slideIn`}
+          )} animate-slideIn pointer-events-auto`}
         >
           {getIcon(toast.type)}
           <p className={`flex-1 font-medium ${getTextColor(toast.type)}`}>

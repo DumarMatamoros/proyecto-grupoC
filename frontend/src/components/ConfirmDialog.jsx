@@ -6,10 +6,28 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   isLoading = false,
+  confirmText = "Eliminar",
+  confirmingText = "Eliminando...",
+  cancelText = "Cancelar",
+  confirmColor = "red",
 }) {
+  const confirmColorClasses = {
+    red: "bg-red-600 hover:bg-red-700",
+    yellow: "bg-yellow-600 hover:bg-yellow-700",
+    blue: "bg-blue-600 hover:bg-blue-700",
+    green: "bg-green-600 hover:bg-green-700",
+  };
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: "rgba(0, 0, 0, 0.15)" }}>
-      <div className="bg-white rounded-xl shadow-2xl max-w-sm p-6">
+    <div 
+      className="fixed inset-0 flex items-center justify-center z-[100]" 
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.3)" }}
+      onClick={!isLoading ? onCancel : undefined}
+    >
+      <div 
+        className="bg-white rounded-xl shadow-2xl max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center gap-3 mb-4">
           <FaExclamationTriangle className="text-2xl text-yellow-600" />
           <h2 className="text-xl font-bold text-gray-800">{title}</h2>
@@ -21,16 +39,16 @@ export default function ConfirmDialog({
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg disabled:opacity-50"
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed transition"
           >
-            Cancelar
+            {cancelText}
           </button>
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
+            className={`px-4 py-2 ${confirmColorClasses[confirmColor] || confirmColorClasses.red} text-white rounded-lg disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed transition`}
           >
-            {isLoading ? "Eliminando..." : "Eliminar"}
+            {isLoading ? confirmingText : confirmText}
           </button>
         </div>
       </div>
