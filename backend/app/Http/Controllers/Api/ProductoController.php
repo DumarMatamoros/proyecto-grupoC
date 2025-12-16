@@ -28,11 +28,9 @@ class ProductoController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'codigo_principal' => 'required|unique:productos,codigo_principal|max:100',
-            'codigo_barras'    => 'nullable|string|max:100',
-            'nombre'           => 'required|max:500',
-            'descripcion'      => 'nullable|string|max:2000',
-            'precio_costo'     => 'nullable|numeric|min:0',
+            'codigo_principal' => 'required|unique:productos,codigo_principal',
+            'nombre'           => 'required|max:255',
+            'descripcion'      => 'nullable|string',
             'precio_unitario'  => 'required|numeric|min:0',
             'stock_actual'     => 'required|integer|min:0',
             'categoria_id'     => 'nullable|exists:categorias,categoria_id',
@@ -42,8 +40,8 @@ class ProductoController extends Controller
         ]);
 
         $producto = new Producto($request->only([
-            'codigo_principal', 'codigo_barras', 'nombre', 'descripcion',
-            'precio_costo', 'precio_unitario', 'stock_actual', 'categoria_id',
+            'codigo_principal', 'nombre', 'descripcion',
+            'precio_unitario', 'stock_actual', 'categoria_id',
             'iva_aplica', 'ice_aplica'
         ]));
 
@@ -70,11 +68,9 @@ class ProductoController extends Controller
         $producto = Producto::findOrFail($id);
 
         $request->validate([
-            'codigo_principal' => "required|unique:productos,codigo_principal,{$id},producto_id|max:100",
-            'codigo_barras'    => 'nullable|string|max:100',
-            'nombre'           => 'required|max:500',
-            'descripcion'      => 'nullable|string|max:2000',
-            'precio_costo'     => 'nullable|numeric|min:0',
+            'codigo_principal' => "required|unique:productos,codigo_principal,{$id},producto_id",
+            'nombre'           => 'required|max:255',
+            'descripcion'      => 'nullable|string',
             'precio_unitario'  => 'required|numeric|min:0',
             'stock_actual'     => 'required|integer|min:0',
             'categoria_id'     => 'nullable|exists:categorias,categoria_id',
@@ -85,8 +81,8 @@ class ProductoController extends Controller
 
         // Actualizar campos
         $producto->fill($request->only([
-            'codigo_principal', 'codigo_barras', 'nombre', 'descripcion',
-            'precio_costo', 'precio_unitario', 'stock_actual', 'categoria_id',
+            'codigo_principal', 'nombre', 'descripcion',
+            'precio_unitario', 'stock_actual', 'categoria_id',
             'iva_aplica', 'ice_aplica'
         ]));
 
@@ -193,16 +189,14 @@ class ProductoController extends Controller
                 ?? null;
             $rows[] = [
                 'codigo_principal' => $codigo,
-                'codigo_barras' => $row['codigo_barras'] ?? null,
                 'nombre' => $row['nombre'] ?? null,
                 'descripcion' => $row['descripcion'] ?? null,
-                'precio_costo' => $row['precio_costo'] ?? null,
                 'precio_unitario' => $row['precio_unitario'] ?? null,
                 'stock_actual' => $row['stock_actual'] ?? null,
                 'categoria_nombre' => $row['categoria_nombre'] ?? ($row['categoria'] ?? null),
                 'iva_aplica' => isset($row['iva_aplica']) ? (int)self::normalizeBool($row['iva_aplica']) : 0,
                 'ice_aplica' => isset($row['ice_aplica']) ? (int)self::normalizeBool($row['ice_aplica']) : 0,
-                'imagen_url' => $row['imagen_url'] ?? null,
+                    'imagen_url' => $row['imagen_url'] ?? null,
                 'linea' => $line + 1,
             ];
             $line++;
@@ -244,10 +238,8 @@ class ProductoController extends Controller
 
                 $payload = [
                     'codigo_principal' => $row['codigo_principal'] ?? null,
-                    'codigo_barras' => $row['codigo_barras'] ?? null,
                     'nombre' => $row['nombre'] ?? null,
                     'descripcion' => $row['descripcion'] ?? null,
-                    'precio_costo' => (float)($row['precio_costo'] ?? 0),
                     'precio_unitario' => (float)($row['precio_unitario'] ?? 0),
                     'stock_actual' => (int)($row['stock_actual'] ?? 0),
                     'categoria_id' => $categoriaId,
