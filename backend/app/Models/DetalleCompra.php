@@ -34,6 +34,7 @@ class DetalleCompra extends Model
         'subtotal',
         'iva',
         'total',
+        'fecha_expiracion',
         'compra_id',
         'producto_id',
     ];

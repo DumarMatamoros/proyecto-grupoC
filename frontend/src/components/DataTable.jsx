@@ -103,6 +103,7 @@ export default function DataTable({
   stickyHeader = true,
   rowHeight = "auto",
   getRowId = null,
+  fullWidth = true, // Por defecto la tabla ocupa el 100% del ancho
 }) {
   const [sorting, setSorting] = useState([]);
   const [columnSizing, setColumnSizing] = useState({});
@@ -163,7 +164,9 @@ export default function DataTable({
         <table 
           className="w-full text-left border-collapse"
           style={{
-            width: table.getCenterTotalSize(),
+            width: fullWidth ? "100%" : table.getCenterTotalSize(),
+            minWidth: fullWidth ? table.getCenterTotalSize() : undefined,
+            tableLayout: fullWidth ? "fixed" : "auto",
           }}
         >
           <thead className={stickyHeader ? "sticky top-0 z-10" : ""}>
@@ -177,19 +180,25 @@ export default function DataTable({
                   const sortDirection = header.column.getIsSorted();
                   const canResize = enableResizing && header.column.getCanResize();
 
+                  // Calcular el ancho como porcentaje si fullWidth está activo
+                  const totalSize = table.getCenterTotalSize();
+                  const colWidth = fullWidth 
+                    ? `${(header.getSize() / totalSize) * 100}%` 
+                    : header.getSize();
+
                   return (
                     <th
                       key={header.id}
-                      className={`px-3 py-3 whitespace-nowrap relative group ${
+                      className={`px-3 py-3 relative group overflow-hidden ${
                         canSort ? "cursor-pointer select-none hover:bg-gray-200 transition-colors" : ""
                       }`}
                       style={{
-                        width: header.getSize(),
+                        width: colWidth,
                         minWidth: header.column.columnDef.minSize || 50,
                       }}
                       onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                     >
-                      <div className="flex items-center gap-2 pr-2">
+                      <div className="flex items-center gap-2 pr-2 whitespace-nowrap">
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -244,18 +253,25 @@ export default function DataTable({
                 className="border-b hover:bg-gray-50 transition-colors"
                 style={{ height: rowHeight }}
               >
-                {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    className="px-3 py-2 text-sm overflow-hidden"
-                    style={{
-                      width: cell.column.getSize(),
-                      maxWidth: cell.column.getSize(),
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
+                {row.getVisibleCells().map((cell) => {
+                  const totalSize = table.getCenterTotalSize();
+                  const cellWidth = fullWidth 
+                    ? `${(cell.column.getSize() / totalSize) * 100}%` 
+                    : cell.column.getSize();
+
+                  return (
+                    <td
+                      key={cell.id}
+                      className="px-3 py-2 text-sm overflow-hidden"
+                      style={{
+                        width: cellWidth,
+                        maxWidth: fullWidth ? undefined : cell.column.getSize(),
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

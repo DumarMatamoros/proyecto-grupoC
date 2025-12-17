@@ -6,21 +6,16 @@ import ToastProvider from "./components/ToastProvider";
 import ToastNotification from "./components/ToastNotification";
 
 // LAYOUT
-import Layout from "./components/Layout";
+import DashboardLayout from "./components/DashboardLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { DashboardNavigationProvider } from "./hooks/useDashboardNavigation";
 
 // PÁGINAS PÚBLICAS
 import Login from "./pages/Login";
 import Registro from "./pages/Registro";
 import RecuperarClave from "./pages/RecuperarClave";
 
-// PÁGINAS PRIVADAS
-import PanelPrincipal from "./pages/PanelPrincipal";
-import Inventario from "./pages/Producto"; // O renombra si deseas a Productos
-import Categoria from "./pages/Categoria";
-import Facturacion from "./pages/Facturacion";
-import Ingresos from "./pages/Ingresos";
-import Egresos from "./pages/Egresos";
+// PÁGINAS DE ERROR (para rutas fuera del dashboard)
 import Error404 from "./pages/Error404";
 import Error403 from "./pages/Error403";
 
@@ -39,72 +34,25 @@ export default function AppRouter() {
         {/* REDIRECCIÓN AL LOGIN */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* RUTAS PRIVADAS BAJO /dashboard */}
+        {/* RUTAS PRIVADAS - DASHBOARD (URL siempre será /dashboard) */}
         <Route
-          path="/dashboard"
+          path="/dashboard/*"
           element={
             <ProtectedRoute allowed={["administrador", "empleado", "cliente", "proveedor"]}>
-              <Layout />
+              <DashboardNavigationProvider>
+                <DashboardLayout />
+              </DashboardNavigationProvider>
             </ProtectedRoute>
           }
-        >
-          {/* Inicio del dashboard */}
-          <Route index element={<PanelPrincipal />} />
+        />
 
-          {/* Subsecciones con control de roles */}
-          <Route
-            path="productos"
-            element={
-              <ProtectedRoute allowed={["administrador", "empleado"]}>
-                <Inventario />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="categoria"
-            element={
-              <ProtectedRoute allowed={["administrador", "empleado"]}>
-                <Categoria />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="ingresos"
-            element={
-              <ProtectedRoute allowed={["administrador", "empleado"]}>
-                <Ingresos />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="egresos"
-            element={
-              <ProtectedRoute allowed={["administrador", "empleado"]}>
-                <Egresos />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="facturacion"
-            element={
-              <ProtectedRoute allowed={["administrador", "empleado"]}>
-                <Facturacion />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* 403 y 404 internos del dashboard */}
-          <Route path="forbidden" element={<Error403 />} />
-          <Route path="*" element={<Error404 />} />
-        </Route>
-
-        {/* REDIRECCIONES DE RUTAS ANTIGUAS → NUEVA ESTRUCTURA */}
+        {/* REDIRECCIONES DE RUTAS ANTIGUAS → DASHBOARD */}
         <Route path="/panel" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/Productos" element={<Navigate to="/dashboard/productos" replace />} />
-        <Route path="/categoria" element={<Navigate to="/dashboard/categoria" replace />} />
-        <Route path="/facturacion" element={<Navigate to="/dashboard/facturacion" replace />} />
-        <Route path="/ingresos" element={<Navigate to="/dashboard/ingresos" replace />} />
-        <Route path="/egresos" element={<Navigate to="/dashboard/egresos" replace />} />
+        <Route path="/Productos" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/categoria" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/facturacion" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/ingresos" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/egresos" element={<Navigate to="/dashboard" replace />} />
 
         {/* 403 global (fuera del dashboard) y 404 */}
         <Route path="/403" element={<Error403 />} />

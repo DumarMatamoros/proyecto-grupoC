@@ -388,10 +388,11 @@ export default function InventoryPage() {
       cols.push({
         accessorKey: "imagen",
         header: "Imagen",
-        size: 60,
-        minSize: 60,
-        maxSize: 60,
+        size: 75,
+        minSize: 75,
+        maxSize: 75,
         enableSorting: false,
+        enableResizing: false,
         truncate: false,
         cell: ({ row }) => (
           <ImageWithFallback
@@ -401,6 +402,7 @@ export default function InventoryPage() {
                 : null
             }
             className="w-10 h-10 object-cover rounded"
+            enableLightbox={true}
           />
         ),
       });
@@ -411,7 +413,7 @@ export default function InventoryPage() {
         accessorKey: "codigo_principal",
         header: "Código",
         size: 100,
-        minSize: 80,
+        minSize: 100,
         maxWidth: 120,
         cell: ({ getValue }) => (
           <span className="font-medium">{getValue() || "-"}</span>
@@ -424,8 +426,8 @@ export default function InventoryPage() {
         accessorKey: "codigo_barras",
         header: "Cód. Barras",
         size: 120,
-        minSize: 100,
-        maxWidth: 140,
+        minSize: 120,
+        maxWidth: 160,
       });
     }
 
@@ -434,7 +436,7 @@ export default function InventoryPage() {
       accessorKey: "nombre",
       header: "Nombre",
       size: 180,
-      minSize: 120,
+      minSize: 100,
       maxWidth: 200,
     });
 
@@ -443,7 +445,7 @@ export default function InventoryPage() {
         accessorKey: "descripcion",
         header: "Descripción",
         size: 200,
-        minSize: 150,
+        minSize: 120,
         maxWidth: 250,
       });
     }
@@ -453,7 +455,7 @@ export default function InventoryPage() {
         accessorKey: "categoria",
         header: "Categoría",
         size: 120,
-        minSize: 100,
+        minSize: 110,
         maxWidth: 150,
         cell: ({ row }) => row.original.categoria?.nombre || "Sin categoría",
       });
@@ -464,8 +466,8 @@ export default function InventoryPage() {
         accessorKey: "stock_actual",
         header: "Stock",
         size: 70,
-        minSize: 60,
-        maxSize: 80,
+        minSize: 70,
+        maxSize: 90,
         truncate: false,
         cell: ({ getValue }) => (
           <span className="text-center block">{getValue()}</span>
@@ -477,9 +479,9 @@ export default function InventoryPage() {
       cols.push({
         accessorKey: "precio_costo",
         header: "P. Costo",
-        size: 90,
-        minSize: 80,
-        maxSize: 100,
+        size: 95,
+        minSize: 95,
+        maxSize: 120,
         truncate: false,
         cell: ({ getValue }) => `$${getValue() ?? "0.00"}`,
       });
@@ -489,9 +491,9 @@ export default function InventoryPage() {
       cols.push({
         accessorKey: "precio_unitario",
         header: "P. Venta",
-        size: 90,
-        minSize: 80,
-        maxSize: 100,
+        size: 95,
+        minSize: 95,
+        maxSize: 120,
         truncate: false,
         cell: ({ getValue }) => `$${getValue()}`,
       });
@@ -501,9 +503,9 @@ export default function InventoryPage() {
       cols.push({
         accessorKey: "iva_aplica",
         header: "IVA",
-        size: 50,
-        minSize: 50,
-        maxSize: 60,
+        size: 55,
+        minSize: 55,
+        maxSize: 70,
         truncate: false,
         cell: ({ getValue }) => (
           <span className="text-center block">{getValue() ? "✓" : "✗"}</span>
@@ -515,9 +517,9 @@ export default function InventoryPage() {
       cols.push({
         accessorKey: "ice_aplica",
         header: "ICE",
-        size: 50,
-        minSize: 50,
-        maxSize: 60,
+        size: 55,
+        minSize: 55,
+        maxSize: 70,
         truncate: false,
         cell: ({ getValue }) => (
           <span className="text-center block">{getValue() ? "✓" : "✗"}</span>
@@ -825,10 +827,10 @@ export default function InventoryPage() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-gray-700 mb-3 font-semibold">Formato esperado:</p>
                   <p className="text-xs text-gray-600 font-mono break-all bg-white p-3 rounded border border-gray-200">
-                    codigo_principal,nombre,descripcion,precio_unitario,stock_actual,categoria_nombre,iva_aplica,ice_aplica
+                    codigo_principal,codigo_barras,nombre,descripcion,precio_costo,precio_unitario,stock_actual,categoria_nombre,iva_aplica,ice_aplica
                   </p>
                   <p className="text-xs text-gray-600 mt-3">
-                    <strong>Nota:</strong> Usa 0 o 1 para iva_aplica e ice_aplica. Las categorías se crearán automáticamente si no existen.
+                    <strong>Nota:</strong> Usa 0 o 1 para iva_aplica e ice_aplica. Las categorías se crearán automáticamente si no existen. El código_barras y precio_costo son opcionales.
                   </p>
                 </div>
 
@@ -857,11 +859,13 @@ export default function InventoryPage() {
                       <thead className="sticky top-0">
                         <tr className="bg-gray-100 text-gray-700 uppercase text-sm font-semibold">
                           <th className="px-4 py-3 border-r">Código</th>
+                          <th className="px-4 py-3 border-r">Cod. Barras</th>
                           <th className="px-4 py-3 border-r">Nombre</th>
                           <th className="px-4 py-3 border-r">Descripción</th>
                           <th className="px-4 py-3 border-r">Categoría</th>
                           <th className="px-4 py-3 border-r">Stock</th>
-                          <th className="px-4 py-3 border-r">Precio</th>
+                          <th className="px-4 py-3 border-r">P. Costo</th>
+                          <th className="px-4 py-3 border-r">P. Venta</th>
                           <th className="px-4 py-3 border-r">IVA</th>
                           <th className="px-4 py-3">ICE</th>
                         </tr>
@@ -870,10 +874,12 @@ export default function InventoryPage() {
                         {importPreview.preview.map((r, idx) => (
                           <tr key={idx} className="border-b hover:bg-gray-50">
                             <td className="px-4 py-2 border-r text-sm font-medium">{r.codigo_principal || "-"}</td>
+                            <td className="px-4 py-2 border-r text-sm">{r.codigo_barras || "-"}</td>
                             <td className="px-4 py-2 border-r text-sm">{r.nombre || "-"}</td>
                             <td className="px-4 py-2 border-r text-sm text-gray-600 max-w-xs truncate">{r.descripcion || "-"}</td>
                             <td className="px-4 py-2 border-r text-sm">{r.categoria_nombre || "Sin categoría"}</td>
                             <td className="px-4 py-2 border-r text-sm text-center">{r.stock_actual || "0"}</td>
+                            <td className="px-4 py-2 border-r text-sm">${r.precio_costo || "0.00"}</td>
                             <td className="px-4 py-2 border-r text-sm">${r.precio_unitario || "0.00"}</td>
                             <td className="px-4 py-2 border-r text-sm text-center">{r.iva_aplica ? "✓" : "✗"}</td>
                             <td className="px-4 py-2 text-sm text-center">{r.ice_aplica ? "✓" : "✗"}</td>

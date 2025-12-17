@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\FacturaController;
 use App\Http\Controllers\Api\ConfiguracionController;
 use App\Http\Controllers\Api\ProductoController;
 use App\Http\Controllers\Api\CategoriaController;
+use App\Http\Controllers\Api\CompraController;
 
 /*
 |--------------------------------------------------------------------------
@@ -75,6 +76,22 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('check.role:administrador,empleado');
     Route::post('/productos/import/confirm', [ProductoController::class, 'importConfirm'])
         ->middleware('check.role:administrador,empleado');
+
+    // COMPRAS / INGRESOS DE STOCK
+    Route::get('/compras', [CompraController::class, 'index'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/compras/estadisticas', [CompraController::class, 'estadisticas'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/compras/proveedores', [CompraController::class, 'proveedores'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/compras/{id}', [CompraController::class, 'show'])
+        ->middleware('check.role:administrador,empleado');
+    Route::post('/compras', [CompraController::class, 'store'])
+        ->middleware('check.role:administrador,empleado');
+    Route::put('/compras/{id}', [CompraController::class, 'update'])
+        ->middleware('check.role:administrador,empleado');
+    Route::delete('/compras/{id}', [CompraController::class, 'destroy'])
+        ->middleware('check.role:administrador');
 
     // AUTH
     Route::post('/auth/logout', [AuthController::class, 'logout']);
