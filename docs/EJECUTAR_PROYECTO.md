@@ -8,7 +8,7 @@ cd backend
 composer install
 npm install
 ```
-
+Hola
 ### 2.2 Crear y configurar `.env`
 Copia el ejemplo si existe y ajusta:
 ```powershell
