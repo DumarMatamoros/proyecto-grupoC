@@ -1,8 +1,21 @@
 import { useEffect, useState } from "react";
-import { FaHome, FaTags, FaBox, FaFileInvoiceDollar, FaShoppingCart, FaCogs, FaSignOutAlt, FaChevronRight, FaArrowCircleDown, FaArrowCircleUp, FaWarehouse } from "react-icons/fa";
+import { 
+  FaHome, 
+  FaTags, 
+  FaBox, 
+  FaFileInvoiceDollar, 
+  FaShoppingCart, 
+  FaCogs, 
+  FaSignOutAlt, 
+  FaChevronRight, 
+  FaArrowCircleDown, 
+  FaArrowCircleUp, 
+  FaWarehouse,
+  FaBars 
+} from "react-icons/fa";
 import { useDashboardNavigation, DASHBOARD_SECTIONS } from "../hooks/useDashboardNavigation";
 
-export default function Sidebar() {
+export default function SidebarDashboard({ collapsed = false, onToggle }) {
   const { currentSection, navigateTo } = useDashboardNavigation();
   
   const inventorySections = [
@@ -19,6 +32,13 @@ export default function Sidebar() {
     setInventoryOpen(isInventoryActive);
   }, [isInventoryActive]);
 
+  // Cerrar submenús cuando se colapsa
+  useEffect(() => {
+    if (collapsed) {
+      setInventoryOpen(false);
+    }
+  }, [collapsed]);
+
   const isActive = (section) => {
     return currentSection === section;
   };
@@ -27,123 +47,122 @@ export default function Sidebar() {
     navigateTo(section);
   };
 
-  return (
-    <aside className="h-screen w-64 bg-gray-900 text-white flex flex-col shadow-xl">
+  // Componente para item del menú
+  const MenuItem = ({ section, icon: Icon, label }) => (
+    <button
+      onClick={() => handleNavigation(section)}
+      title={collapsed ? label : ""}
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition 
+        ${isActive(section) ? "bg-gray-700" : "hover:bg-gray-800"}
+        ${collapsed ? "justify-center" : ""}`}
+    >
+      <Icon className="text-lg flex-shrink-0" />
+      {!collapsed && <span>{label}</span>}
+    </button>
+  );
 
-      {/* LOGO / TÍTULO */}
-      <div className="px-6 py-5 text-xl font-bold border-b border-gray-700">
-        PANEL ADMIN
+  return (
+    <aside className={`h-screen bg-gray-900 text-white flex flex-col shadow-xl transition-all duration-300 ${
+      collapsed ? "w-16" : "w-64"
+    }`}>
+
+      {/* LOGO / TÍTULO CON BOTÓN DE TOGGLE */}
+      <div className={`py-5 border-b border-gray-700 flex items-center ${
+        collapsed ? "px-3 justify-center" : "px-4 justify-between"
+      }`}>
+        {!collapsed && (
+          <span className="text-xl font-bold whitespace-nowrap">PANEL ADMIN</span>
+        )}
+        <button
+          onClick={onToggle}
+          className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+          title={collapsed ? "Expandir menú" : "Colapsar menú"}
+        >
+          <FaBars className="text-lg" />
+        </button>
       </div>
 
       {/* MENÚ */}
-      <nav className="flex-1 px-4 py-4 space-y-2">
+      <nav className={`flex-1 py-4 space-y-2 overflow-y-auto ${collapsed ? "px-2" : "px-4"}`}>
 
         {/* PANEL */}
-        <button
-          onClick={() => handleNavigation(DASHBOARD_SECTIONS.PANEL)}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition 
-            ${isActive(DASHBOARD_SECTIONS.PANEL) ? "bg-gray-700" : "hover:bg-gray-800"}`}
-        >
-          <FaHome /> Panel de Control
-        </button>
+        <MenuItem section={DASHBOARD_SECTIONS.PANEL} icon={FaHome} label="Panel de Control" />
 
         {/* INVENTARIO */}
         <button
-          onClick={() => setInventoryOpen((prev) => !prev)}
-          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition ${
+          onClick={() => {
+            if (collapsed) {
+              // Si está colapsado, expandir sidebar y abrir submenú
+              onToggle();
+              setInventoryOpen(true);
+            } else {
+              // Si está expandido, toggle del submenú
+              setInventoryOpen((prev) => !prev);
+            }
+          }}
+          title={collapsed ? "Inventario" : ""}
+          className={`w-full flex items-center px-3 py-2 rounded-lg transition ${
             isInventoryActive ? "bg-gray-700" : "hover:bg-gray-800"
-          }`}
+          } ${collapsed ? "justify-center" : "justify-between"}`}
         >
           <span className="flex items-center gap-3">
-            <FaWarehouse /> Inventario
+            <FaWarehouse className="text-lg flex-shrink-0" />
+            {!collapsed && <span>Inventario</span>}
           </span>
-          <FaChevronRight
-            className={`transition-transform duration-200 ${
-              inventoryOpen ? "rotate-90" : "rotate-0"
-            }`}
-          />
+          {!collapsed && (
+            <FaChevronRight
+              className={`transition-transform duration-200 ${
+                inventoryOpen ? "rotate-90" : "rotate-0"
+              }`}
+            />
+          )}
         </button>
 
-        <div
-          className={`space-y-3 ml-4 overflow-hidden transition-all duration-200 ${
-            inventoryOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-          }`}
-        >
-          <div className="text-xs font-semibold text-blue-400 uppercase tracking-wider px-2 pt-2">
-            Gestión
-          </div>
-          <button
-            onClick={() => handleNavigation(DASHBOARD_SECTIONS.PRODUCTOS)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition 
-              ${isActive(DASHBOARD_SECTIONS.PRODUCTOS) ? "bg-gray-700" : "hover:bg-gray-800"}`}
+        {/* Submenú de inventario - solo visible cuando no está colapsado */}
+        {!collapsed && (
+          <div
+            className={`space-y-1 ml-4 overflow-hidden transition-all duration-200 ${
+              inventoryOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+            }`}
           >
-            <FaBox /> Productos
-          </button>
-          <button
-            onClick={() => handleNavigation(DASHBOARD_SECTIONS.CATEGORIA)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition 
-              ${isActive(DASHBOARD_SECTIONS.CATEGORIA) ? "bg-gray-700" : "hover:bg-gray-800"}`}
-          >
-            <FaTags /> Categorías
-          </button>
+            <div className="text-xs font-semibold text-blue-400 uppercase tracking-wider px-2 pt-2">
+              Gestión
+            </div>
+            <MenuItem section={DASHBOARD_SECTIONS.PRODUCTOS} icon={FaBox} label="Productos" />
+            <MenuItem section={DASHBOARD_SECTIONS.CATEGORIA} icon={FaTags} label="Categorías" />
 
-          <div className="text-xs font-semibold text-blue-400 uppercase tracking-wider px-2 pt-2">
-            Operaciones
+            <div className="text-xs font-semibold text-blue-400 uppercase tracking-wider px-2 pt-2">
+              Operaciones
+            </div>
+            <MenuItem section={DASHBOARD_SECTIONS.INGRESOS} icon={FaArrowCircleDown} label="Ingresar" />
+            <MenuItem section={DASHBOARD_SECTIONS.EGRESOS} icon={FaArrowCircleUp} label="Deshechar" />
           </div>
-          <button
-            onClick={() => handleNavigation(DASHBOARD_SECTIONS.INGRESOS)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition 
-              ${isActive(DASHBOARD_SECTIONS.INGRESOS) ? "bg-gray-700" : "hover:bg-gray-800"}`}
-          >
-            <FaArrowCircleDown /> Ingresar
-          </button>
-          <button
-            onClick={() => handleNavigation(DASHBOARD_SECTIONS.EGRESOS)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition 
-              ${isActive(DASHBOARD_SECTIONS.EGRESOS) ? "bg-gray-700" : "hover:bg-gray-800"}`}
-          >
-            <FaArrowCircleUp /> Deshechar
-          </button>
-        </div>
+        )}
 
         {/* FACTURACIÓN */}
-        <button
-          onClick={() => handleNavigation(DASHBOARD_SECTIONS.FACTURACION)}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition 
-            ${isActive(DASHBOARD_SECTIONS.FACTURACION) ? "bg-gray-700" : "hover:bg-gray-800"}`}
-        >
-          <FaFileInvoiceDollar /> Facturación
-        </button>
+        <MenuItem section={DASHBOARD_SECTIONS.FACTURACION} icon={FaFileInvoiceDollar} label="Facturación" />
 
         {/* VENTAS */}
-        <button
-          onClick={() => handleNavigation(DASHBOARD_SECTIONS.VENTAS)}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition 
-            ${isActive(DASHBOARD_SECTIONS.VENTAS) ? "bg-gray-700" : "hover:bg-gray-800"}`}
-        >
-          <FaShoppingCart /> Ventas
-        </button>
+        <MenuItem section={DASHBOARD_SECTIONS.VENTAS} icon={FaShoppingCart} label="Ventas" />
 
         {/* CONFIGURACIÓN */}
-        <button
-          onClick={() => handleNavigation(DASHBOARD_SECTIONS.CONFIGURACION)}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition 
-            ${isActive(DASHBOARD_SECTIONS.CONFIGURACION) ? "bg-gray-700" : "hover:bg-gray-800"}`}
-        >
-          <FaCogs /> Configuración
-        </button>
+        <MenuItem section={DASHBOARD_SECTIONS.CONFIGURACION} icon={FaCogs} label="Configuración" />
       </nav>
 
       {/* CERRAR SESIÓN */}
-      <div className="p-4 border-t border-gray-700">
+      <div className={`p-4 border-t border-gray-700 ${collapsed ? "px-2" : ""}`}>
         <button
           onClick={() => {
             localStorage.clear();
             window.location.href = "/login";
           }}
-          className="flex items-center gap-3 w-full px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition"
+          title={collapsed ? "Cerrar sesión" : ""}
+          className={`flex items-center gap-3 w-full px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition ${
+            collapsed ? "justify-center" : ""
+          }`}
         >
-          <FaSignOutAlt /> Cerrar sesión
+          <FaSignOutAlt className="text-lg flex-shrink-0" />
+          {!collapsed && <span>Cerrar sesión</span>}
         </button>
       </div>
 

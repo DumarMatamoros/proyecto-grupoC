@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ConfiguracionController;
 use App\Http\Controllers\Api\ProductoController;
 use App\Http\Controllers\Api\CategoriaController;
 use App\Http\Controllers\Api\CompraController;
+use App\Http\Controllers\EgresoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -93,6 +94,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/compras/{id}', [CompraController::class, 'destroy'])
         ->middleware('check.role:administrador');
 
+    // EGRESOS / DESECHO DE PRODUCTOS
+    Route::get('/egresos', [EgresoController::class, 'index'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/egresos/estadisticas', [EgresoController::class, 'estadisticas'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/egresos/productos-problematicos', [EgresoController::class, 'productosProblematicos'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/egresos/{id}', [EgresoController::class, 'show'])
+        ->middleware('check.role:administrador,empleado');
+    Route::post('/egresos', [EgresoController::class, 'store'])
+        ->middleware('check.role:administrador,empleado');
+    Route::delete('/egresos/{id}', [EgresoController::class, 'destroy'])
+        ->middleware('check.role:administrador');
+
     // AUTH
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -129,9 +144,18 @@ Route::middleware('auth:sanctum')->group(function () {
     | FACTURACIÓN
     |--------------------------------------------------------------------------
     */
-    Route::get('/facturas', [FacturaController::class, 'index']);
-    Route::post('/facturas', [FacturaController::class, 'store']);
-    Route::get('/facturas/{id}', [FacturaController::class, 'show']);
-    Route::put('/facturas/{id}', [FacturaController::class, 'update']);
-    Route::delete('/facturas/{id}', [FacturaController::class, 'destroy']);
+    Route::get('/facturas', [FacturaController::class, 'index'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/facturas/estadisticas', [FacturaController::class, 'estadisticas'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/facturas/clientes', [FacturaController::class, 'buscarClientes'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/facturas/{id}', [FacturaController::class, 'show'])
+        ->middleware('check.role:administrador,empleado');
+    Route::post('/facturas', [FacturaController::class, 'store'])
+        ->middleware('check.role:administrador,empleado');
+    Route::put('/facturas/{id}', [FacturaController::class, 'update'])
+        ->middleware('check.role:administrador,empleado');
+    Route::delete('/facturas/{id}', [FacturaController::class, 'destroy'])
+        ->middleware('check.role:administrador');
 });

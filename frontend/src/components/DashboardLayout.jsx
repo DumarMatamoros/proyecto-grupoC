@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import SidebarDashboard from "./SidebarDashboard";
 import Topbar from "./Topbar";
 import { useDashboardNavigation, DASHBOARD_SECTIONS } from "../hooks/useDashboardNavigation";
@@ -39,6 +40,21 @@ const sectionRoles = {
 export default function DashboardLayout() {
   const { currentSection, navigateTo } = useDashboardNavigation();
 
+  // Estado del sidebar - persistido en localStorage
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem("sidebarCollapsed");
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Guardar estado en localStorage cuando cambia
+  useEffect(() => {
+    localStorage.setItem("sidebarCollapsed", JSON.stringify(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => !prev);
+  };
+
   // Obtener el rol del usuario
   const getUserRole = () => {
     try {
@@ -71,8 +87,10 @@ export default function DashboardLayout() {
     <div className="flex h-screen w-full">
 
       {/* SIDEBAR */}
-      <aside className="w-64 flex-shrink-0 bg-white border-r shadow-md">
-        <SidebarDashboard />
+      <aside className={`flex-shrink-0 bg-white border-r shadow-md transition-all duration-300 ${
+        sidebarCollapsed ? "w-16" : "w-64"
+      }`}>
+        <SidebarDashboard collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
       </aside>
 
       {/* CONTENIDO PRINCIPAL */}

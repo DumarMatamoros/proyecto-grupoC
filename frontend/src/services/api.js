@@ -19,8 +19,6 @@ api.interceptors.request.use(
   }
 );
 
-export default api;
-
 // INTERCEPTOR DE RESPUESTA PARA ERRORES DE AUTENTICACIÓN/AUTORIZACIÓN
 api.interceptors.response.use(
   (response) => response,
@@ -51,3 +49,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export default api;

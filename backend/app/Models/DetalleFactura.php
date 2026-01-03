@@ -31,12 +31,28 @@ class DetalleFactura extends Model
     protected $fillable = [
         'cantidad',
         'precio_unitario',
+        'iva_aplica',
+        'porcentaje_iva',
         'descuento',
         'subtotal',
         'iva',
         'total_detalle',
         'factura_id',
         'producto_id',
+    ];
+
+    /**
+     * Los atributos que deben ser casteados.
+     */
+    protected $casts = [
+        'cantidad' => 'integer',
+        'precio_unitario' => 'decimal:2',
+        'descuento' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'iva' => 'decimal:2',
+        'total_detalle' => 'decimal:2',
+        'iva_aplica' => 'boolean',
+        'porcentaje_iva' => 'decimal:2',
     ];
 
     /**

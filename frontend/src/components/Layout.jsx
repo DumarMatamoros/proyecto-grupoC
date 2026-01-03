@@ -1,14 +1,34 @@
+import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import { Outlet } from "react-router-dom";
 
 export default function Layout() {
+  // Estado del sidebar - persistido en localStorage
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem("sidebarCollapsed");
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Guardar estado en localStorage cuando cambia
+  useEffect(() => {
+    localStorage.setItem("sidebarCollapsed", JSON.stringify(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => !prev);
+  };
+
   return (
     <div className="flex h-screen w-full">
 
       {/* SIDEBAR */}
-      <aside className="w-64 flex-shrink-0 bg-white border-r shadow-md">
-        <Sidebar />
+      <aside 
+        className={`flex-shrink-0 bg-white border-r shadow-md transition-all duration-300 ${
+          sidebarCollapsed ? "w-16" : "w-64"
+        }`}
+      >
+        <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
       </aside>
 
       {/* CONTENIDO PRINCIPAL */}
