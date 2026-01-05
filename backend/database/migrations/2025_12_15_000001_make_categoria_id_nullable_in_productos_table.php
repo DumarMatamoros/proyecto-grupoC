@@ -11,9 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('productos', function (Blueprint $table) {
-            $table->unsignedBigInteger('categoria_id')->nullable()->change();
-        });
+        // Ya está nullable en la migración original
     }
 
     /**
@@ -21,8 +19,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('productos', function (Blueprint $table) {
-            $table->unsignedBigInteger('categoria_id')->nullable(false)->change();
-        });
+        // Nada que revertir
     }
 };
