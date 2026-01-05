@@ -3,9 +3,7 @@
 Copiar y pegar cada sección en Postman como requests separados.
 
 ---
-
 ## 🔐 AUTENTICACIÓN
-
 ### Login
 ```
 POST http://localhost:8000/api/auth/login
@@ -23,7 +21,6 @@ GET http://localhost:8000/api/auth/me
 Authorization: Bearer {{token}}
 ```
 
----
 
 ## 📄 FACTURACIÓN
 
