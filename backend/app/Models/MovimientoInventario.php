@@ -28,14 +28,33 @@ class MovimientoInventario extends Model
      *
      * @var array<int, string>
      */
-    protected $fillable = [
-        'fecha',
-        'tipo_movimiento',
-        'cantidad',
-        'referencia',
-        'producto_id',
-    ];
+        protected $fillable = [
+            'fecha',
+            'tipo_movimiento',      // INGRESO, SALIDA, AJUSTE
+            'tipo_documento',       // COMPRA, FACTURA, AJUSTE, DEVOLUCION, MERMA
+            'numero_documento',
+            'cantidad',
+            'cantidad_entrada',
+            'cantidad_salida',
+            'stock_resultante',
+            'costo_unitario',
+            'referencia',
+            'observaciones',
+            'producto_id',
+            'lote_id',
+            'usuario_id',
+        ];
 
+        // Agregar relación con lote
+        public function lote()
+        {
+            return $this->belongsTo(Lote::class, 'lote_id');
+        }
+
+        public function usuario()
+        {
+            return $this->belongsTo(User::class, 'usuario_id');
+        }
     /**
      * Obtiene el producto del movimiento de inventario.
      */
