@@ -12,8 +12,8 @@ import { DashboardNavigationProvider } from "./hooks/useDashboardNavigation";
 
 // PÁGINAS PÚBLICAS
 import Login from "./pages/Login";
-import Registro from "./pages/Registro";
 import RecuperarClave from "./pages/RecuperarClave";
+import CambiarClaveObligatoria from "./pages/CambiarClaveObligatoria";
 
 // PÁGINAS DE ERROR (para rutas fuera del dashboard)
 import Error404 from "./pages/Error404";
@@ -28,8 +28,8 @@ export default function AppRouter() {
 
         {/* RUTAS PÚBLICAS */}
         <Route path="/login" element={<Login />} />
-        <Route path="/registro" element={<Registro />} />
         <Route path="/recuperar-clave" element={<RecuperarClave />} />
+        <Route path="/cambiar-clave" element={<CambiarClaveObligatoria />} />
 
         {/* REDIRECCIÓN AL LOGIN */}
         <Route path="/" element={<Navigate to="/login" replace />} />

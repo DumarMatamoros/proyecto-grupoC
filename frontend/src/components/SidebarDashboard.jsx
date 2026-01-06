@@ -11,13 +11,21 @@ import {
   FaArrowCircleDown, 
   FaArrowCircleUp, 
   FaWarehouse,
-  FaBars 
+  FaBars,
+  FaUsers,
+  FaUserShield,
+  FaUsersCog,
+  FaListUl
 } from "react-icons/fa";
 import { useDashboardNavigation, DASHBOARD_SECTIONS } from "../hooks/useDashboardNavigation";
+import authService from "../services/authService";
 
 export default function SidebarDashboard({ collapsed = false, onToggle }) {
   const { currentSection, navigateTo } = useDashboardNavigation();
+  const currentUser = authService.getUser();
+  const isAdmin = currentUser?.tipo === "administrador";
   
+  // Secciones de Inventario
   const inventorySections = [
     DASHBOARD_SECTIONS.PRODUCTOS,
     DASHBOARD_SECTIONS.CATEGORIA,
@@ -25,17 +33,31 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
     DASHBOARD_SECTIONS.EGRESOS,
   ];
   
+  // Secciones de Gestión de Acceso
+  const accessSections = [
+    DASHBOARD_SECTIONS.USUARIOS,
+    DASHBOARD_SECTIONS.PERMISOS,
+  ];
+  
   const isInventoryActive = inventorySections.includes(currentSection);
+  const isAccessActive = accessSections.includes(currentSection);
+  
   const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
+  const [accessOpen, setAccessOpen] = useState(isAccessActive);
 
   useEffect(() => {
     setInventoryOpen(isInventoryActive);
   }, [isInventoryActive]);
 
+  useEffect(() => {
+    setAccessOpen(isAccessActive);
+  }, [isAccessActive]);
+
   // Cerrar submenús cuando se colapsa
   useEffect(() => {
     if (collapsed) {
       setInventoryOpen(false);
+      setAccessOpen(false);
     }
   }, [collapsed]);
 
@@ -144,6 +166,50 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
 
         {/* VENTAS */}
         <MenuItem section={DASHBOARD_SECTIONS.VENTAS} icon={FaShoppingCart} label="Ventas" />
+
+        {/* GESTIÓN DE ACCESO - Solo visible para administradores */}
+        {isAdmin && (
+          <>
+            <button
+              onClick={() => {
+                if (collapsed) {
+                  onToggle();
+                  setAccessOpen(true);
+                } else {
+                  setAccessOpen((prev) => !prev);
+                }
+              }}
+              title={collapsed ? "Gestión de Acceso" : ""}
+              className={`w-full flex items-center px-3 py-2 rounded-lg transition ${
+                isAccessActive ? "bg-gray-700" : "hover:bg-gray-800"
+              } ${collapsed ? "justify-center" : "justify-between"}`}
+            >
+              <span className="flex items-center gap-3">
+                <FaUsersCog className="text-lg flex-shrink-0" />
+                {!collapsed && <span>Gestión de Acceso</span>}
+              </span>
+              {!collapsed && (
+                <FaChevronRight
+                  className={`transition-transform duration-200 ${
+                    accessOpen ? "rotate-90" : "rotate-0"
+                  }`}
+                />
+              )}
+            </button>
+
+            {/* Submenú de Gestión de Acceso */}
+            {!collapsed && (
+              <div
+                className={`space-y-1 ml-4 overflow-hidden transition-all duration-200 ${
+                  accessOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                <MenuItem section={DASHBOARD_SECTIONS.USUARIOS} icon={FaListUl} label="Lista de Usuarios" />
+                <MenuItem section={DASHBOARD_SECTIONS.PERMISOS} icon={FaUserShield} label="Roles y Permisos" />
+              </div>
+            )}
+          </>
+        )}
 
         {/* CONFIGURACIÓN */}
         <MenuItem section={DASHBOARD_SECTIONS.CONFIGURACION} icon={FaCogs} label="Configuración" />

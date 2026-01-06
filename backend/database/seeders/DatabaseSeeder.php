@@ -23,6 +23,9 @@ class DatabaseSeeder extends Seeder
         // Cargar configuraciones primero
         $this->call(ConfiguracionSeeder::class);
 
+        // Crear Super Administrador del sistema
+        $this->call(SuperAdminSeeder::class);
+
         // Crear una sucursal por defecto
         $sucursal = Sucursal::create([
             'nombre' => 'Sucursal Principal',

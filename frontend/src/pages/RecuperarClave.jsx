@@ -4,18 +4,20 @@ import { useNavigate } from "react-router-dom";
 import authService from "../services/authService";
 import Input from "../components/Input";
 import Button from "../components/Button";
+import useToast from "../hooks/useToast";
 
 const ForgotPasswordPage = () => {
   const { register, handleSubmit } = useForm();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const onSubmit = async (data) => {
     try {
       await authService.forgotPassword(data);
-      alert("Se ha enviado un correo para recuperar la contraseña.");
+      toast.success("Se ha enviado un correo para recuperar la contraseña.");
       navigate("/login");
     } catch {
-      alert("Error al recuperar contraseña");
+      toast.error("Error al recuperar contraseña");
     }
   };
 
@@ -30,7 +32,7 @@ const ForgotPasswordPage = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <Input {...register("email")} placeholder="Correo" type="email" />
 
-          <Button className="w-full py-3 text-lg">
+          <Button className="w-full py-3 text-lg cursor-pointer">
             Enviar
           </Button>
         </form>
@@ -38,7 +40,7 @@ const ForgotPasswordPage = () => {
         <div className="mt-6 text-center">
           <button
             onClick={() => navigate("/login")}
-            className="text-blue-600 hover:underline text-sm"
+            className="text-blue-600 hover:underline text-sm cursor-pointer"
           >
             Volver
           </button>

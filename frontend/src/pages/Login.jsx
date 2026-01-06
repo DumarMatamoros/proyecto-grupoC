@@ -2,21 +2,37 @@ import authService from "../services/authService";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import ImagenFondo from "../image/PNG FONDO.png";
+import useToast from "../hooks/useToast";
 
 export default function Login() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
-      await authService.login(email, password);
-      navigate("/dashboard");
+      const { mustChangePassword } = await authService.login(email, password);
+      
+      // Si debe cambiar contraseña, redirigir a la página de cambio
+      if (mustChangePassword) {
+        toast.warning("Debe cambiar su contraseña antes de continuar");
+        navigate("/cambiar-clave");
+      } else {
+        toast.success("Sesión iniciada correctamente");
+        navigate("/dashboard");
+      }
     } catch (err) {
+      toast.error("Credenciales incorrectas");
       setError("Credenciales incorrectas");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -69,21 +85,37 @@ return (
 
           <button
             type="submit"
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-semibold shadow-md transition"
+            disabled={loading}
+            className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white py-3 rounded-xl font-semibold shadow-md transition cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Ingresar
+            {loading ? (
+              <>
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+                Ingresando...
+              </>
+            ) : (
+              "Ingresar"
+            )}
           </button>
         </form>
 
         <button
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-5 py-3 rounded-xl font-semibold transition"
-          onClick={() => navigate("/registro")}
-        >
-          Crear Usuario
-        </button>
-
-        <button
-          className="w-full mt-4 text-sm text-blue-600 hover:underline"
+          className="w-full mt-4 text-sm text-blue-600 hover:underline cursor-pointer"
           onClick={() => navigate("/recuperar-clave")}
         >
           ¿Olvidaste tu contraseña?

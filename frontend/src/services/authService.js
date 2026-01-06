@@ -13,17 +13,26 @@ const authService = {
 
     const token = res.data.data.token;
     const usuario = res.data.data.usuario;
+    const mustChangePassword = res.data.data.must_change_password || false;
 
     // GUARDAR TOKEN Y USUARIO
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(usuario));
+    
+    // Guardar flag de cambio de contraseña
+    if (mustChangePassword) {
+      localStorage.setItem("must_change_password", "true");
+    } else {
+      localStorage.removeItem("must_change_password");
+    }
 
-    return usuario;
+    return { usuario, mustChangePassword };
   },
 
   logout: () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("must_change_password");
   },
 
   getUser: () => {
@@ -31,11 +40,27 @@ const authService = {
     return user ? JSON.parse(user) : null;
   },
 
+  mustChangePassword: () => {
+    return localStorage.getItem("must_change_password") === "true";
+  },
+
+  clearMustChangePassword: () => {
+    localStorage.removeItem("must_change_password");
+  },
+
   fetchMe: async () => {
     const res = await api.get("/auth/me");
     if (res?.data?.success) {
       const usuario = res.data.data;
       localStorage.setItem("user", JSON.stringify(usuario));
+      
+      // Actualizar flag de cambio de contraseña
+      if (usuario.must_change_password) {
+        localStorage.setItem("must_change_password", "true");
+      } else {
+        localStorage.removeItem("must_change_password");
+      }
+      
       return usuario;
     }
     throw new Error("No se pudo validar la sesión");

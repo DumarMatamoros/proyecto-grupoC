@@ -1,22 +1,30 @@
 import { FaExclamationTriangle } from "react-icons/fa";
 
 export default function ConfirmDialog({
+  isOpen = false,
   title = "Confirmación",
   message = "¿Está seguro de que desea continuar?",
   onConfirm,
   onCancel,
   isLoading = false,
   confirmText = "Eliminar",
+  confirmLabel, // alias for confirmText
   confirmingText = "Eliminando...",
   cancelText = "Cancelar",
   confirmColor = "red",
 }) {
+  // Don't render if not open
+  if (!isOpen) return null;
+
   const confirmColorClasses = {
     red: "bg-red-600 hover:bg-red-700",
     yellow: "bg-yellow-600 hover:bg-yellow-700",
     blue: "bg-blue-600 hover:bg-blue-700",
     green: "bg-green-600 hover:bg-green-700",
   };
+
+  // Use confirmLabel as alias if provided
+  const buttonText = confirmLabel || confirmText;
 
   return (
     <div 
@@ -48,7 +56,7 @@ export default function ConfirmDialog({
             disabled={isLoading}
             className={`px-4 py-2 ${confirmColorClasses[confirmColor] || confirmColorClasses.red} text-white rounded-lg disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed transition`}
           >
-            {isLoading ? confirmingText : confirmText}
+            {isLoading ? confirmingText : buttonText}
           </button>
         </div>
       </div>

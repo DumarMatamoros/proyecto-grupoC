@@ -130,7 +130,7 @@ export default function PanelPrincipal() {
 
 function Card({ color, icon, title, value }) {
   return (
-    <div className={`text-white p-6 rounded-xl shadow-md flex items-center justify-between ${color}`}>
+    <div className={`text-white p-6 rounded-xl shadow-md flex items-center justify-between ${color} cursor-pointer hover:scale-105 hover:shadow-lg transition-all duration-200`}>
       <div>
         <p className="text-3xl font-bold">{value}</p>
         <p className="text-sm">{title}</p>

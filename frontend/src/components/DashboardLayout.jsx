@@ -10,6 +10,9 @@ import Categoria from "../pages/Categoria";
 import Facturacion from "../pages/Facturacion";
 import Ingresos from "../pages/Ingresos";
 import Egresos from "../pages/Egresos";
+import GestionUsuarios from "../pages/GestionUsuarios";
+import GestionPermisos from "../pages/GestionPermisos";
+import PermisosUsuario from "../pages/PermisosUsuario";
 import Error403 from "../pages/Error403";
 import Error404 from "../pages/Error404";
 
@@ -21,6 +24,9 @@ const sectionComponents = {
   [DASHBOARD_SECTIONS.INGRESOS]: Ingresos,
   [DASHBOARD_SECTIONS.EGRESOS]: Egresos,
   [DASHBOARD_SECTIONS.FACTURACION]: Facturacion,
+  [DASHBOARD_SECTIONS.USUARIOS]: GestionUsuarios,
+  [DASHBOARD_SECTIONS.PERMISOS]: GestionPermisos,
+  [DASHBOARD_SECTIONS.PERMISOS_USUARIO]: PermisosUsuario,
   [DASHBOARD_SECTIONS.FORBIDDEN]: Error403,
   [DASHBOARD_SECTIONS.NOT_FOUND]: Error404,
 };
@@ -34,11 +40,14 @@ const sectionRoles = {
   [DASHBOARD_SECTIONS.EGRESOS]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.FACTURACION]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.VENTAS]: ["administrador", "empleado"],
+  [DASHBOARD_SECTIONS.USUARIOS]: ["administrador"],
+  [DASHBOARD_SECTIONS.PERMISOS]: ["administrador"],
+  [DASHBOARD_SECTIONS.PERMISOS_USUARIO]: ["administrador"],
   [DASHBOARD_SECTIONS.CONFIGURACION]: ["administrador"],
 };
 
 export default function DashboardLayout() {
-  const { currentSection, navigateTo } = useDashboardNavigation();
+  const { currentSection, sectionParams, navigateTo } = useDashboardNavigation();
 
   // Estado del sidebar - persistido en localStorage
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -103,7 +112,7 @@ export default function DashboardLayout() {
 
         {/* CONTENIDO DE LAS PÁGINAS */}
         <main className="flex-1 overflow-auto bg-gray-100 p-6">
-          <ContentComponent />
+          <ContentComponent {...sectionParams} />
         </main>
       </div>
     </div>
