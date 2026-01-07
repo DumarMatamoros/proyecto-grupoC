@@ -62,35 +62,40 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // Crear clientes con sus usuarios
+        // Crear clientes según el nuevo modelo
         for ($i = 0; $i < 8; $i++) {
-            $usuario = User::factory()->create([
-                'tipo' => 'cliente'
-            ]);
-            
             Cliente::create([
-                'usuario_id' => $usuario->usuario_id,
-                'ruc_cedula' => fake()->unique()->numerify('###########'),
-                'razon_social' => fake()->optional()->company(),
+                'id_type' => fake()->randomElement(['RUC', 'CEDULA', 'PASAPORTE']),
+                'id_number' => fake()->unique()->numerify('###########'),
+                'razon_social' => fake()->company(), // Siempre asigna un valor
                 'direccion' => fake()->address(),
                 'telefono' => fake()->phoneNumber(),
-                'tipo' => fake()->randomElement(['natural', 'juridica']),
+                'email' => fake()->optional()->safeEmail(),
+                'is_active' => true,
+                'notes' => fake()->optional()->sentence(),
             ]);
         }
 
         // Crear proveedores con sus usuarios
         for ($i = 0; $i < 5; $i++) {
-            $usuario = User::factory()->create([
-                'tipo' => 'proveedor'
-            ]);
-            
             Proveedor::create([
-                'usuario_id' => $usuario->usuario_id,
-                'ruc' => fake()->unique()->numerify('##############'),
+                'id_type' => fake()->randomElement(['RUC', 'CEDULA', 'PASAPORTE']),
+                'id_number' => fake()->unique()->numerify('##############'),
                 'razon_social' => fake()->company(),
+                'nombre_comercial' => fake()->optional()->companySuffix(),
                 'direccion' => fake()->address(),
                 'telefono' => fake()->phoneNumber(),
                 'sitio_web' => fake()->optional()->url(),
+                'email' => fake()->optional()->safeEmail(),
+                'contacto_nombre' => fake()->optional()->name(),
+                'contacto_telefono' => fake()->optional()->phoneNumber(),
+                'contacto_email' => fake()->optional()->safeEmail(),
+                'tipo_proveedor' => fake()->randomElement(['BIENES', 'SERVICIOS', 'MIXTO']),
+                'banco' => fake()->optional()->company(),
+                'cuenta_bancaria' => fake()->optional()->bankAccountNumber(),
+                'tipo_cuenta' => fake()->optional()->randomElement(['AHORROS', 'CORRIENTE']),
+                'is_active' => true,
+                'notes' => fake()->optional()->sentence(),
             ]);
         }
 
