@@ -15,6 +15,8 @@ export const DASHBOARD_SECTIONS = {
   INGRESOS: "ingresos",
   EGRESOS: "egresos",
   FACTURACION: "facturacion",
+  KARDEX: "kardex",
+  LOTES: "lotes",
   VENTAS: "ventas",
   USUARIOS: "usuarios",
   PERMISOS: "permisos",

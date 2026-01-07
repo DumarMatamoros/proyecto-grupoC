@@ -10,6 +10,8 @@ import Categoria from "../pages/Categoria";
 import Facturacion from "../pages/Facturacion";
 import Ingresos from "../pages/Ingresos";
 import Egresos from "../pages/Egresos";
+import Kardex from "../pages/Kardex";
+import Lotes from "../pages/Lotes";
 import GestionUsuarios from "../pages/GestionUsuarios";
 import GestionPermisos from "../pages/GestionPermisos";
 import PermisosUsuario from "../pages/PermisosUsuario";
@@ -24,6 +26,8 @@ const sectionComponents = {
   [DASHBOARD_SECTIONS.INGRESOS]: Ingresos,
   [DASHBOARD_SECTIONS.EGRESOS]: Egresos,
   [DASHBOARD_SECTIONS.FACTURACION]: Facturacion,
+  [DASHBOARD_SECTIONS.KARDEX]: Kardex,
+  [DASHBOARD_SECTIONS.LOTES]: Lotes,
   [DASHBOARD_SECTIONS.USUARIOS]: GestionUsuarios,
   [DASHBOARD_SECTIONS.PERMISOS]: GestionPermisos,
   [DASHBOARD_SECTIONS.PERMISOS_USUARIO]: PermisosUsuario,
@@ -39,6 +43,8 @@ const sectionRoles = {
   [DASHBOARD_SECTIONS.INGRESOS]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.EGRESOS]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.FACTURACION]: ["administrador", "empleado"],
+  [DASHBOARD_SECTIONS.KARDEX]: ["administrador", "empleado"],
+  [DASHBOARD_SECTIONS.LOTES]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.VENTAS]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.USUARIOS]: ["administrador"],
   [DASHBOARD_SECTIONS.PERMISOS]: ["administrador"],

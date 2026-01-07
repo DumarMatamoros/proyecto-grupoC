@@ -12,6 +12,9 @@ import {
   FaArrowCircleUp, 
   FaWarehouse,
   FaBars,
+  FaClipboardList,
+  FaTrashAlt,
+  FaBoxes,
   FaUsers,
   FaUserShield,
   FaUsersCog,
@@ -25,10 +28,12 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
   const currentUser = authService.getUser();
   const isAdmin = currentUser?.tipo === "administrador";
   
-  // Secciones de Inventario
+  // Secciones que pertenecen a Inventario (incluyendo Kardex y Lotes)
   const inventorySections = [
     DASHBOARD_SECTIONS.PRODUCTOS,
     DASHBOARD_SECTIONS.CATEGORIA,
+    DASHBOARD_SECTIONS.KARDEX,
+    DASHBOARD_SECTIONS.LOTES,
     DASHBOARD_SECTIONS.INGRESOS,
     DASHBOARD_SECTIONS.EGRESOS,
   ];
@@ -110,15 +115,13 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
         {/* PANEL */}
         <MenuItem section={DASHBOARD_SECTIONS.PANEL} icon={FaHome} label="Panel de Control" />
 
-        {/* INVENTARIO */}
+        {/* INVENTARIO - Menú desplegable */}
         <button
           onClick={() => {
             if (collapsed) {
-              // Si está colapsado, expandir sidebar y abrir submenú
               onToggle();
               setInventoryOpen(true);
             } else {
-              // Si está expandido, toggle del submenú
               setInventoryOpen((prev) => !prev);
             }
           }}
@@ -140,24 +143,28 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
           )}
         </button>
 
-        {/* Submenú de inventario - solo visible cuando no está colapsado */}
+        {/* Submenú de Inventario */}
         {!collapsed && (
           <div
             className={`space-y-1 ml-4 overflow-hidden transition-all duration-200 ${
               inventoryOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
             }`}
           >
+            {/* Gestión */}
             <div className="text-xs font-semibold text-blue-400 uppercase tracking-wider px-2 pt-2">
               Gestión
             </div>
             <MenuItem section={DASHBOARD_SECTIONS.PRODUCTOS} icon={FaBox} label="Productos" />
             <MenuItem section={DASHBOARD_SECTIONS.CATEGORIA} icon={FaTags} label="Categorías" />
+            <MenuItem section={DASHBOARD_SECTIONS.KARDEX} icon={FaClipboardList} label="Kardex" />
+            <MenuItem section={DASHBOARD_SECTIONS.LOTES} icon={FaBoxes} label="Lotes" />
 
+            {/* Operaciones */}
             <div className="text-xs font-semibold text-blue-400 uppercase tracking-wider px-2 pt-2">
               Operaciones
             </div>
-            <MenuItem section={DASHBOARD_SECTIONS.INGRESOS} icon={FaArrowCircleDown} label="Ingresar" />
-            <MenuItem section={DASHBOARD_SECTIONS.EGRESOS} icon={FaArrowCircleUp} label="Deshechar" />
+            <MenuItem section={DASHBOARD_SECTIONS.INGRESOS} icon={FaArrowCircleDown} label="Ingresar Stock" />
+            <MenuItem section={DASHBOARD_SECTIONS.EGRESOS} icon={FaTrashAlt} label="Desechar" />
           </div>
         )}
 

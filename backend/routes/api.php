@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\ConfiguracionController;
 use App\Http\Controllers\Api\ProductoController;
 use App\Http\Controllers\Api\CategoriaController;
 use App\Http\Controllers\Api\CompraController;
+use App\Http\Controllers\Api\KardexController;
+use App\Http\Controllers\Api\LoteController;
 use App\Http\Controllers\EgresoController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\ClienteController;
@@ -237,4 +239,48 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/facturas/{id}', [FacturaController::class, 'destroy'])
             ->middleware('check.role:administrador');
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | KARDEX - CONTROL DE INVENTARIO
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/kardex', [KardexController::class, 'index'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/kardex/estadisticas', [KardexController::class, 'estadisticas'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/kardex/movimientos', [KardexController::class, 'movimientos'])
+        ->middleware('check.role:administrador,empleado');
+    Route::post('/kardex/ajuste', [KardexController::class, 'ajusteInventario'])
+        ->middleware('check.role:administrador');
+    Route::get('/kardex/{productoId}', [KardexController::class, 'show'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/kardex/{productoId}/lotes', [KardexController::class, 'lotes'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/kardex/{productoId}/exportar', [KardexController::class, 'exportar'])
+        ->middleware('check.role:administrador,empleado');
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOTES - TRAZABILIDAD POR LOTES
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/lotes', [LoteController::class, 'index'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/lotes/resumen', [LoteController::class, 'resumen'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/lotes/{id}', [LoteController::class, 'show'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/lotes/{id}/historial', [LoteController::class, 'historial'])
+        ->middleware('check.role:administrador,empleado');
+    Route::post('/lotes', [LoteController::class, 'store'])
+        ->middleware('check.role:administrador,empleado');
+    Route::post('/lotes/{id}/dar-baja', [LoteController::class, 'darDeBaja'])
+        ->middleware('check.role:administrador,empleado');
+    Route::post('/lotes/{id}/marcar-vencido', [LoteController::class, 'marcarVencido'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/productos/{productoId}/lotes', [LoteController::class, 'lotesPorProducto'])
+        ->middleware('check.role:administrador,empleado');
+    Route::get('/productos/{productoId}/siguiente-lote', [LoteController::class, 'sugerirSiguienteLote'])
+        ->middleware('check.role:administrador,empleado');
 });
