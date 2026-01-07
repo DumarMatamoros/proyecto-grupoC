@@ -8,6 +8,7 @@ use App\Models\DetalleCompra;
 use App\Models\Producto;
 use App\Models\Proveedor;
 use App\Models\MovimientoInventario;
+use App\Models\Lote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -46,6 +47,7 @@ class CompraController extends Controller
 
     /**
      * Crear una nueva compra con sus detalles
+     * Crea lotes automáticamente y registra movimientos en el Kardex
      */
     public function store(Request $request)
     {
@@ -58,6 +60,7 @@ class CompraController extends Controller
             'detalles.*.cantidad' => 'required|integer|min:1',
             'detalles.*.precio_unitario' => 'required|numeric|min:0',
             'detalles.*.fecha_expiracion' => 'nullable|date',
+            'detalles.*.numero_lote' => 'nullable|string|max:50',
         ]);
 
         DB::beginTransaction();
@@ -86,6 +89,7 @@ class CompraController extends Controller
                     'iva' => $iva,
                     'total' => $total,
                     'fecha_expiracion' => $detalle['fecha_expiracion'] ?? null,
+                    'numero_lote' => $detalle['numero_lote'] ?? null, // Número de lote personalizado
                 ];
 
                 $totalCompra += $total;
@@ -99,25 +103,54 @@ class CompraController extends Controller
                 'total' => $totalCompra,
             ]);
 
-            // Crear detalles y actualizar stock
+            $usuario = $request->user();
+
+            // Crear detalles, lotes y actualizar stock
             foreach ($detallesData as $detalleData) {
                 $detalle = $compra->detalles()->create($detalleData);
 
                 // Actualizar stock del producto
                 $producto = Producto::find($detalleData['producto_id']);
+                $stockAnterior = $producto->stock_actual;
                 $producto->stock_actual += $detalleData['cantidad'];
                 
                 // Actualizar precio de costo si se proporciona
                 $producto->precio_costo = $detalleData['precio_unitario'];
                 $producto->save();
 
-                // Registrar movimiento de inventario
+                // ========== CREAR LOTE PARA KARDEX FIFO ==========
+                // Usar número de lote personalizado o generar automáticamente
+                $numeroLote = !empty($detalleData['numero_lote']) 
+                    ? $detalleData['numero_lote'] 
+                    : Lote::generarNumeroLote($detalleData['producto_id']);
+                $lote = Lote::create([
+                    'producto_id' => $detalleData['producto_id'],
+                    'numero_lote' => $numeroLote,
+                    'cantidad_inicial' => $detalleData['cantidad'],
+                    'cantidad_disponible' => $detalleData['cantidad'],
+                    'costo_unitario' => $detalleData['precio_unitario'],
+                    'fecha_ingreso' => $request->fecha,
+                    'fecha_vencimiento' => $detalleData['fecha_expiracion'],
+                    'estado' => 'activo',
+                    'compra_id' => $compra->compra_id,
+                ]);
+
+                // ========== REGISTRAR MOVIMIENTO EN KARDEX ==========
                 MovimientoInventario::create([
                     'fecha' => $request->fecha,
-                    'tipo_movimiento' => 'entrada',
+                    'tipo_movimiento' => 'ENTRADA',
+                    'tipo_documento' => 'COMPRA',
+                    'numero_documento' => $compra->compra_id,
                     'cantidad' => $detalleData['cantidad'],
+                    'cantidad_entrada' => $detalleData['cantidad'],
+                    'cantidad_salida' => 0,
+                    'stock_resultante' => $producto->stock_actual,
+                    'costo_unitario' => $detalleData['precio_unitario'],
+                    'lote_id' => $lote->lote_id,
                     'referencia' => 'Compra #' . $compra->compra_id . ' - Factura: ' . $request->numero_factura_proveedor,
                     'producto_id' => $detalleData['producto_id'],
+                    'usuario_id' => $usuario->usuario_id ?? null,
+                    'observaciones' => 'Proveedor: ' . ($compra->proveedor->razon_social ?? 'N/A'),
                 ]);
             }
 
@@ -127,7 +160,7 @@ class CompraController extends Controller
             $compra->load(['proveedor', 'detalles.producto']);
 
             return response()->json([
-                'message' => 'Compra registrada correctamente',
+                'message' => 'Compra registrada correctamente con lotes creados',
                 'compra' => $compra,
             ], 201);
 
@@ -162,6 +195,7 @@ class CompraController extends Controller
 
     /**
      * Eliminar una compra (y revertir el stock)
+     * También marca los lotes asociados como eliminados
      */
     public function destroy($id)
     {
@@ -169,25 +203,48 @@ class CompraController extends Controller
 
         try {
             $compra = Compra::with('detalles')->findOrFail($id);
+            $usuario = request()->user();
 
             // Revertir el stock de cada producto
             foreach ($compra->detalles as $detalle) {
                 $producto = Producto::find($detalle->producto_id);
                 if ($producto) {
+                    $stockAnterior = $producto->stock_actual;
                     $producto->stock_actual -= $detalle->cantidad;
                     if ($producto->stock_actual < 0) {
                         $producto->stock_actual = 0;
                     }
                     $producto->save();
 
-                    // Registrar movimiento de reversión
+                    // Buscar y eliminar el lote asociado a esta compra
+                    $lote = Lote::where('producto_id', $detalle->producto_id)
+                        ->where('cantidad_inicial', $detalle->cantidad)
+                        ->where('fecha_ingreso', $compra->fecha)
+                        ->first();
+
+                    // Registrar movimiento de reversión en el Kardex
                     MovimientoInventario::create([
                         'fecha' => now(),
-                        'tipo_movimiento' => 'salida',
+                        'tipo_movimiento' => 'SALIDA',
+                        'tipo_documento' => 'ANULACION_COMPRA',
+                        'numero_documento' => $compra->compra_id,
                         'cantidad' => $detalle->cantidad,
+                        'cantidad_entrada' => 0,
+                        'cantidad_salida' => $detalle->cantidad,
+                        'stock_resultante' => $producto->stock_actual,
+                        'costo_unitario' => $detalle->precio_unitario,
+                        'lote_id' => $lote->lote_id ?? null,
                         'referencia' => 'Anulación Compra #' . $compra->compra_id,
                         'producto_id' => $detalle->producto_id,
+                        'usuario_id' => $usuario->usuario_id ?? null,
+                        'observaciones' => 'Stock revertido por anulación de compra',
                     ]);
+
+                    // Eliminar o dejar en 0 el lote
+                    if ($lote) {
+                        $lote->cantidad_disponible = 0;
+                        $lote->save();
+                    }
                 }
             }
 

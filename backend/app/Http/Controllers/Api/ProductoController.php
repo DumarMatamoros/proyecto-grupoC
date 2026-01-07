@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Producto;
+use App\Models\Lote;
+use App\Models\MovimientoInventario;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class ProductoController extends Controller
 {
@@ -38,28 +41,89 @@ class ProductoController extends Controller
             'categoria_id'     => 'nullable|exists:categorias,categoria_id',
             'iva_aplica'       => 'required|in:0,1',
             'ice_aplica'       => 'required|in:0,1',
+            'iva_porcentaje'   => 'nullable|numeric|min:0|max:100',
+            'ice_porcentaje'   => 'nullable|numeric|min:0|max:100',
             'imagen'           => 'nullable|image|max:4096',
+            'numero_lote'      => 'nullable|string|max:50', // Lote inicial opcional
         ]);
 
-        $producto = new Producto($request->only([
-            'codigo_principal', 'codigo_barras', 'nombre', 'descripcion',
-            'precio_costo', 'precio_unitario', 'stock_actual', 'categoria_id',
-            'iva_aplica', 'ice_aplica'
-        ]));
+        DB::beginTransaction();
 
-        // Guardar imagen
-        if ($request->hasFile('imagen')) {
-            $ruta = $request->file('imagen')->store('productos', 'public');
-            $producto->imagen = $ruta;
+        try {
+            $producto = new Producto($request->only([
+                'codigo_principal', 'codigo_barras', 'nombre', 'descripcion',
+                'precio_costo', 'precio_unitario', 'stock_actual', 'categoria_id',
+                'iva_aplica', 'ice_aplica', 'iva_porcentaje', 'ice_porcentaje'
+            ]));
+
+            // Calcular precio_con_impuestos automáticamente
+            $precioBase = (float)$request->precio_unitario;
+            $ivaPorcentaje = $request->iva_aplica ? ((float)$request->iva_porcentaje ?: 15) : 0;
+            $icePorcentaje = $request->ice_aplica ? ((float)$request->ice_porcentaje ?: 0) : 0;
+            $producto->precio_con_impuestos = $precioBase * (1 + ($ivaPorcentaje + $icePorcentaje) / 100);
+
+            // Guardar imagen
+            if ($request->hasFile('imagen')) {
+                $ruta = $request->file('imagen')->store('productos', 'public');
+                $producto->imagen = $ruta;
+            }
+
+            $producto->save();
+
+            // ========== CREAR LOTE INICIAL SI HAY STOCK ==========
+            $stockInicial = (int) $request->stock_actual;
+            if ($stockInicial > 0) {
+                // Usar número de lote personalizado o generar automáticamente
+                $numeroLote = !empty($request->numero_lote) 
+                    ? $request->numero_lote 
+                    : Lote::generarNumeroLote($producto->producto_id);
+
+                $lote = Lote::create([
+                    'producto_id' => $producto->producto_id,
+                    'numero_lote' => $numeroLote,
+                    'cantidad_inicial' => $stockInicial,
+                    'cantidad_disponible' => $stockInicial,
+                    'costo_unitario' => (float) ($request->precio_costo ?: $request->precio_unitario),
+                    'fecha_ingreso' => now()->toDateString(),
+                    'fecha_vencimiento' => null,
+                    'estado' => 'activo',
+                    'compra_id' => null, // No viene de compra, es inventario inicial
+                ]);
+
+                // Registrar movimiento de inventario inicial
+                MovimientoInventario::create([
+                    'fecha' => now()->toDateString(),
+                    'tipo_movimiento' => 'ENTRADA',
+                    'tipo_documento' => 'INVENTARIO_INICIAL',
+                    'numero_documento' => $producto->producto_id,
+                    'cantidad' => $stockInicial,
+                    'cantidad_entrada' => $stockInicial,
+                    'cantidad_salida' => 0,
+                    'stock_resultante' => $stockInicial,
+                    'costo_unitario' => (float) ($request->precio_costo ?: $request->precio_unitario),
+                    'lote_id' => $lote->lote_id,
+                    'referencia' => 'Inventario inicial - Producto: ' . $producto->nombre,
+                    'producto_id' => $producto->producto_id,
+                    'usuario_id' => $request->user()?->usuario_id ?? null,
+                    'observaciones' => 'Creación de producto con stock inicial' . ($request->numero_lote ? ' - Lote: ' . $request->numero_lote : ''),
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                "success" => true,
+                "message" => "Producto creado correctamente" . ($stockInicial > 0 ? " con lote inicial" : ""),
+                "data"    => $producto->load('categoria')
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                "success" => false,
+                "message" => "Error al crear producto: " . $e->getMessage()
+            ], 500);
         }
-
-        $producto->save();
-
-        return response()->json([
-            "success" => true,
-            "message" => "Producto creado correctamente",
-            "data"    => $producto->load('categoria')
-        ], 201);
     }
 
     // ============================================================
@@ -80,6 +144,8 @@ class ProductoController extends Controller
             'categoria_id'     => 'nullable|exists:categorias,categoria_id',
             'iva_aplica'       => 'required|in:0,1',
             'ice_aplica'       => 'required|in:0,1',
+            'iva_porcentaje'   => 'nullable|numeric|min:0|max:100',
+            'ice_porcentaje'   => 'nullable|numeric|min:0|max:100',
             'imagen'           => 'nullable|image|max:4096',
         ]);
 
@@ -87,8 +153,14 @@ class ProductoController extends Controller
         $producto->fill($request->only([
             'codigo_principal', 'codigo_barras', 'nombre', 'descripcion',
             'precio_costo', 'precio_unitario', 'stock_actual', 'categoria_id',
-            'iva_aplica', 'ice_aplica'
+            'iva_aplica', 'ice_aplica', 'iva_porcentaje', 'ice_porcentaje'
         ]));
+
+        // Calcular precio_con_impuestos automáticamente
+        $precioBase = (float)$request->precio_unitario;
+        $ivaPorcentaje = $request->iva_aplica ? ((float)$request->iva_porcentaje ?: 15) : 0;
+        $icePorcentaje = $request->ice_aplica ? ((float)$request->ice_porcentaje ?: 0) : 0;
+        $producto->precio_con_impuestos = $precioBase * (1 + ($ivaPorcentaje + $icePorcentaje) / 100);
 
         // Si llega nueva imagen → reemplazar
         if ($request->hasFile('imagen')) {
@@ -118,17 +190,47 @@ class ProductoController extends Controller
     {
         $producto = Producto::findOrFail($id);
 
-        // Eliminar imagen física
-        if ($producto->imagen && Storage::disk('public')->exists($producto->imagen)) {
-            Storage::disk('public')->delete($producto->imagen);
+        try {
+            DB::beginTransaction();
+
+            // Verificar si tiene facturas o compras asociadas (no permitir eliminar)
+            $tieneFacturas = \App\Models\DetalleFactura::where('producto_id', $id)->exists();
+            $tieneCompras = \App\Models\DetalleCompra::where('producto_id', $id)->exists();
+
+            if ($tieneFacturas || $tieneCompras) {
+                return response()->json([
+                    "success" => false,
+                    "message" => "No se puede eliminar el producto porque tiene ventas o compras registradas. Considere desactivarlo en su lugar."
+                ], 422);
+            }
+
+            // Eliminar movimientos de inventario asociados
+            MovimientoInventario::where('producto_id', $id)->delete();
+
+            // Eliminar lotes asociados
+            Lote::where('producto_id', $id)->delete();
+
+            // Eliminar imagen física
+            if ($producto->imagen && Storage::disk('public')->exists($producto->imagen)) {
+                Storage::disk('public')->delete($producto->imagen);
+            }
+
+            $producto->delete();
+
+            DB::commit();
+
+            return response()->json([
+                "success" => true,
+                "message" => "Producto eliminado correctamente"
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                "success" => false,
+                "message" => "Error al eliminar producto: " . $e->getMessage()
+            ], 500);
         }
-
-        $producto->delete();
-
-        return response()->json([
-            "success" => true,
-            "message" => "Producto eliminado correctamente"
-        ], 200);
     }
 
     // ============================================================
@@ -229,61 +331,124 @@ class ProductoController extends Controller
         $updated = 0;
         $errors = [];
 
-        foreach ($request->input('rows') as $idx => $row) {
-            try {
-                // Resolver categoría por nombre si se envía
-                $categoriaId = null;
-                if (!empty($row['categoria_nombre'])) {
-                    $categoria = \App\Models\Categoria::firstOrCreate([
-                        'nombre' => $row['categoria_nombre']
-                    ], [
-                        'descripcion' => $row['categoria_nombre']
-                    ]);
-                    $categoriaId = $categoria->categoria_id;
-                }
+        DB::beginTransaction();
 
-                $payload = [
-                    'codigo_principal' => $row['codigo_principal'] ?? null,
-                    'codigo_barras' => $row['codigo_barras'] ?? null,
-                    'nombre' => $row['nombre'] ?? null,
-                    'descripcion' => $row['descripcion'] ?? null,
-                    'precio_costo' => (float)($row['precio_costo'] ?? 0),
-                    'precio_unitario' => (float)($row['precio_unitario'] ?? 0),
-                    'stock_actual' => (int)($row['stock_actual'] ?? 0),
-                    'categoria_id' => $categoriaId,
-                    'iva_aplica' => isset($row['iva_aplica']) ? (int)$row['iva_aplica'] : 0,
-                    'ice_aplica' => isset($row['ice_aplica']) ? (int)$row['ice_aplica'] : 0,
-                ];
+        try {
+            foreach ($request->input('rows') as $idx => $row) {
+                try {
+                    // Resolver categoría por nombre si se envía
+                    $categoriaId = null;
+                    if (!empty($row['categoria_nombre'])) {
+                        $categoria = \App\Models\Categoria::firstOrCreate([
+                            'nombre' => $row['categoria_nombre']
+                        ], [
+                            'descripcion' => $row['categoria_nombre']
+                        ]);
+                        $categoriaId = $categoria->categoria_id;
+                    }
 
-                // Validación simple
-                if (!$payload['codigo_principal'] || !$payload['nombre']) {
-                    throw new \Exception('Campos obligatorios faltantes');
-                }
+                    $stockActual = (int)($row['stock_actual'] ?? 0);
+                    $numeroLote = $row['numero_lote'] ?? null;
 
-                // Crear o actualizar por código
-                $producto = Producto::where('codigo_principal', $payload['codigo_principal'])->first();
-                if ($producto) {
-                    $producto->update($payload);
-                    $updated++;
-                } else {
-                    $producto = Producto::create($payload);
-                    $created++;
+                    $payload = [
+                        'codigo_principal' => $row['codigo_principal'] ?? null,
+                        'codigo_barras' => $row['codigo_barras'] ?? null,
+                        'nombre' => $row['nombre'] ?? null,
+                        'descripcion' => $row['descripcion'] ?? null,
+                        'precio_costo' => (float)($row['precio_costo'] ?? 0),
+                        'precio_unitario' => (float)($row['precio_unitario'] ?? 0),
+                        'stock_actual' => $stockActual,
+                        'categoria_id' => $categoriaId,
+                        'iva_aplica' => isset($row['iva_aplica']) ? (int)$row['iva_aplica'] : 0,
+                        'ice_aplica' => isset($row['ice_aplica']) ? (int)$row['ice_aplica'] : 0,
+                    ];
+
+                    // Validación simple
+                    if (!$payload['codigo_principal'] || !$payload['nombre']) {
+                        throw new \Exception('Campos obligatorios faltantes');
+                    }
+
+                    // Crear o actualizar por código
+                    $producto = Producto::where('codigo_principal', $payload['codigo_principal'])->first();
+                    $esNuevo = false;
+
+                    if ($producto) {
+                        // Si es actualización, no modificar stock desde aquí
+                        $payloadSinStock = $payload;
+                        unset($payloadSinStock['stock_actual']);
+                        $producto->update($payloadSinStock);
+                        $updated++;
+                    } else {
+                        $producto = Producto::create($payload);
+                        $esNuevo = true;
+                        $created++;
+                    }
+
+                    // ========== CREAR LOTE INICIAL SI ES NUEVO Y TIENE STOCK ==========
+                    if ($esNuevo && $stockActual > 0) {
+                        // Usar número de lote del CSV o generar automáticamente
+                        $loteNumero = !empty($numeroLote) 
+                            ? $numeroLote 
+                            : Lote::generarNumeroLote($producto->producto_id);
+
+                        $lote = Lote::create([
+                            'producto_id' => $producto->producto_id,
+                            'numero_lote' => $loteNumero,
+                            'cantidad_inicial' => $stockActual,
+                            'cantidad_disponible' => $stockActual,
+                            'costo_unitario' => (float) ($payload['precio_costo'] ?: $payload['precio_unitario']),
+                            'fecha_ingreso' => now()->toDateString(),
+                            'fecha_vencimiento' => null,
+                            'estado' => 'activo',
+                            'compra_id' => null,
+                        ]);
+
+                        // Registrar movimiento de inventario inicial
+                        MovimientoInventario::create([
+                            'fecha' => now()->toDateString(),
+                            'tipo_movimiento' => 'ENTRADA',
+                            'tipo_documento' => 'IMPORTACION_CSV',
+                            'numero_documento' => $producto->producto_id,
+                            'cantidad' => $stockActual,
+                            'cantidad_entrada' => $stockActual,
+                            'cantidad_salida' => 0,
+                            'stock_resultante' => $stockActual,
+                            'costo_unitario' => (float) ($payload['precio_costo'] ?: $payload['precio_unitario']),
+                            'lote_id' => $lote->lote_id,
+                            'referencia' => 'Importación CSV - Producto: ' . $producto->nombre,
+                            'producto_id' => $producto->producto_id,
+                            'usuario_id' => $request->user()?->usuario_id ?? null,
+                            'observaciones' => 'Stock inicial por importación masiva' . ($numeroLote ? ' - Lote: ' . $numeroLote : ''),
+                        ]);
+                    }
+
+                } catch (\Throwable $e) {
+                    $errors[] = [
+                        'index' => $idx,
+                        'codigo_principal' => $row['codigo_principal'] ?? null,
+                        'error' => $e->getMessage(),
+                    ];
                 }
-            } catch (\Throwable $e) {
-                $errors[] = [
-                    'index' => $idx,
-                    'codigo_principal' => $row['codigo_principal'] ?? null,
-                    'error' => $e->getMessage(),
-                ];
             }
-        }
 
-        return response()->json([
-            'message' => 'Importación procesada',
-            'created' => $created,
-            'updated' => $updated,
-            'errors' => $errors,
-        ], 200);
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Importación procesada',
+                'created' => $created,
+                'updated' => $updated,
+                'errors' => $errors,
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error en importación: ' . $e->getMessage(),
+                'created' => 0,
+                'updated' => 0,
+                'errors' => $errors,
+            ], 500);
+        }
     }
 
     // Helper para normalizar valores booleanos desde CSV

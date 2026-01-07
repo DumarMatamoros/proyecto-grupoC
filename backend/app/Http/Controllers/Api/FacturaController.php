@@ -9,6 +9,7 @@ use App\Models\Producto;
 use App\Models\Cliente;
 use App\Models\Configuracion;
 use App\Models\MovimientoInventario;
+use App\Models\Lote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -244,18 +245,73 @@ class FacturaController extends Controller
                     'total_detalle' => $totalItem,
                 ]);
 
-                // Descontar stock
-                $producto->stock_actual -= $cantidad;
-                $producto->save();
+                // ========== DESCUENTO FIFO DEL STOCK ==========
+                $cantidadRestante = $cantidad;
+                
+                // Obtener lotes ordenados por FIFO (primero los más antiguos y próximos a vencer)
+                $lotes = Lote::where('producto_id', $producto->producto_id)
+                    ->where('cantidad_disponible', '>', 0)
+                    ->orderBy('fecha_vencimiento', 'asc')
+                    ->orderBy('fecha_ingreso', 'asc')
+                    ->get();
 
-                // Registrar movimiento de inventario
-                MovimientoInventario::create([
-                    'fecha' => $fechaEmision,
-                    'tipo_movimiento' => 'salida',
-                    'cantidad' => $cantidad,
-                    'referencia' => "Factura #{$numeroFactura}",
-                    'producto_id' => $producto->producto_id,
-                ]);
+                foreach ($lotes as $lote) {
+                    if ($cantidadRestante <= 0) break;
+
+                    // Cantidad a descontar de este lote
+                    $cantidadDescontarLote = min($lote->cantidad_disponible, $cantidadRestante);
+                    
+                    // Actualizar lote
+                    $lote->cantidad_disponible -= $cantidadDescontarLote;
+                    $lote->save();
+
+                    // Registrar movimiento de inventario para este lote
+                    MovimientoInventario::create([
+                        'fecha' => $fechaEmision,
+                        'tipo_movimiento' => 'SALIDA',
+                        'tipo_documento' => 'FACTURA',
+                        'numero_documento' => $factura->factura_id,
+                        'cantidad' => $cantidadDescontarLote,
+                        'cantidad_entrada' => 0,
+                        'cantidad_salida' => $cantidadDescontarLote,
+                        'stock_resultante' => $producto->stock_actual - $cantidadDescontarLote,
+                        'costo_unitario' => $lote->costo_unitario,
+                        'lote_id' => $lote->lote_id,
+                        'referencia' => "Factura #{$numeroFactura}",
+                        'producto_id' => $producto->producto_id,
+                        'usuario_id' => $usuario ? $usuario->usuario_id : null,
+                        'observaciones' => "Lote: {$lote->lote_id}, Cliente: {$request->nombre_cliente}",
+                    ]);
+
+                    $cantidadRestante -= $cantidadDescontarLote;
+
+                    // Actualizar stock del producto
+                    $producto->stock_actual -= $cantidadDescontarLote;
+                    $producto->save();
+                }
+
+                // Si no hay lotes suficientes pero hay stock (productos sin lote), registrar salida general
+                if ($cantidadRestante > 0) {
+                    $producto->stock_actual -= $cantidadRestante;
+                    $producto->save();
+
+                    MovimientoInventario::create([
+                        'fecha' => $fechaEmision,
+                        'tipo_movimiento' => 'SALIDA',
+                        'tipo_documento' => 'FACTURA',
+                        'numero_documento' => $factura->factura_id,
+                        'cantidad' => $cantidadRestante,
+                        'cantidad_entrada' => 0,
+                        'cantidad_salida' => $cantidadRestante,
+                        'stock_resultante' => $producto->stock_actual,
+                        'costo_unitario' => $producto->precio_costo,
+                        'lote_id' => null,
+                        'referencia' => "Factura #{$numeroFactura} (sin lote)",
+                        'producto_id' => $producto->producto_id,
+                        'usuario_id' => $usuario ? $usuario->usuario_id : null,
+                        'observaciones' => "Producto sin lote asignado",
+                    ]);
+                }
 
                 $subtotal += $subtotalItem;
                 $totalIva += $ivaItem;
@@ -314,6 +370,8 @@ class FacturaController extends Controller
         if (isset($validated['estado']) && $validated['estado'] === 'anulada' && $factura->estado !== 'anulada') {
             DB::beginTransaction();
             try {
+                $usuario = $request->user();
+                
                 foreach ($factura->detalles as $detalle) {
                     $producto = Producto::find($detalle->producto_id);
                     if ($producto) {
@@ -321,13 +379,21 @@ class FacturaController extends Controller
                         $producto->save();
                     }
 
-                    // Registrar movimiento de inventario
+                    // Registrar movimiento de inventario KARDEX
                     MovimientoInventario::create([
                         'fecha' => now()->format('Y-m-d'),
-                        'tipo_movimiento' => 'entrada',
+                        'tipo_movimiento' => 'ENTRADA',
+                        'tipo_documento' => 'ANULACION_FACTURA',
+                        'numero_documento' => $factura->factura_id,
                         'cantidad' => $detalle->cantidad,
+                        'cantidad_entrada' => $detalle->cantidad,
+                        'cantidad_salida' => 0,
+                        'stock_resultante' => $producto->stock_actual,
+                        'costo_unitario' => $producto->precio_costo,
                         'referencia' => "Anulación Factura #{$factura->numero_factura}",
                         'producto_id' => $detalle->producto_id,
+                        'usuario_id' => $usuario ? $usuario->usuario_id : null,
+                        'observaciones' => 'Stock revertido por anulación de factura',
                     ]);
                 }
 
