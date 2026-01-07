@@ -33,7 +33,7 @@ export default function Ingresos() {
   // Búsqueda y paginación
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 20; // Estilo Gmail
 
   // Visibilidad de columnas y menú
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
@@ -60,11 +60,12 @@ export default function Ingresos() {
     cantidad: 1,
     precio_unitario: "",
     fecha_expiracion: "",
+    numero_lote: "",
   });
 
   // Edición inline de líneas
   const [editandoLinea, setEditandoLinea] = useState(null); // índice de la línea en edición
-  const [lineaEditada, setLineaEditada] = useState({ cantidad: "", precio_unitario: "", fecha_expiracion: "" });
+  const [lineaEditada, setLineaEditada] = useState({ cantidad: "", precio_unitario: "", fecha_expiracion: "", numero_lote: "" });
 
   // Confirmación para eliminar línea del formulario
   const [confirmDeleteLinea, setConfirmDeleteLinea] = useState(null);
@@ -262,7 +263,7 @@ export default function Ingresos() {
       fecha: new Date().toISOString().split("T")[0],
       detalles: [],
     });
-    setNuevaLinea({ producto_id: "", cantidad: 1, precio_unitario: "", fecha_expiracion: "" });
+    setNuevaLinea({ producto_id: "", cantidad: 1, precio_unitario: "", fecha_expiracion: "", numero_lote: "" });
     setModal(true);
   };
 
@@ -300,6 +301,7 @@ export default function Ingresos() {
       total,
       iva_aplica: producto.iva_aplica,
       fecha_expiracion: nuevaLinea.fecha_expiracion || null,
+      numero_lote: nuevaLinea.numero_lote || null,
     };
 
     setForm((prev) => ({
@@ -308,7 +310,7 @@ export default function Ingresos() {
     }));
 
     // Limpiar línea temporal
-    setNuevaLinea({ producto_id: "", cantidad: 1, precio_unitario: "", fecha_expiracion: "" });
+    setNuevaLinea({ producto_id: "", cantidad: 1, precio_unitario: "", fecha_expiracion: "", numero_lote: "" });
   };
 
   const eliminarLinea = (index) => {
@@ -327,6 +329,7 @@ export default function Ingresos() {
       cantidad: linea.cantidad.toString(),
       precio_unitario: linea.precio_unitario.toString(),
       fecha_expiracion: linea.fecha_expiracion || "",
+      numero_lote: linea.numero_lote || "",
     });
   };
 
@@ -344,18 +347,18 @@ export default function Ingresos() {
       ...prev,
       detalles: prev.detalles.map((d, i) =>
         i === index
-          ? { ...d, cantidad, precio_unitario: precioUnitario, subtotal, iva, total, fecha_expiracion: lineaEditada.fecha_expiracion || null }
+          ? { ...d, cantidad, precio_unitario: precioUnitario, subtotal, iva, total, fecha_expiracion: lineaEditada.fecha_expiracion || null, numero_lote: lineaEditada.numero_lote || null }
           : d
       ),
     }));
     setEditandoLinea(null);
-    setLineaEditada({ cantidad: "", precio_unitario: "", fecha_expiracion: "" });
+    setLineaEditada({ cantidad: "", precio_unitario: "", fecha_expiracion: "", numero_lote: "" });
   };
 
   // Cancelar edición
   const cancelarEdicionLinea = () => {
     setEditandoLinea(null);
-    setLineaEditada({ cantidad: "", precio_unitario: "", fecha_expiracion: "" });
+    setLineaEditada({ cantidad: "", precio_unitario: "", fecha_expiracion: "", numero_lote: "" });
   };
 
   const totalesCompra = useMemo(() => {
@@ -393,6 +396,7 @@ export default function Ingresos() {
           cantidad: d.cantidad,
           precio_unitario: d.precio_unitario,
           fecha_expiracion: d.fecha_expiracion || null,
+          numero_lote: d.numero_lote || null,
         })),
       };
 
@@ -430,15 +434,31 @@ export default function Ingresos() {
   };
 
   // ============================
-  // AUTOCOMPLETAR PRECIO COSTO
+  // AUTOCOMPLETAR PRECIO COSTO Y SUGERIR LOTE
   // ============================
-  const handleProductoChange = (productoId) => {
+  const handleProductoChange = async (productoId) => {
     const producto = productos.find((p) => p.producto_id === parseInt(productoId));
+    
+    // Actualizar inmediatamente con el precio
     setNuevaLinea({
       ...nuevaLinea,
       producto_id: productoId,
       precio_unitario: producto?.precio_costo || "",
+      numero_lote: "", // Limpiar mientras carga
     });
+
+    // Buscar sugerencia de lote si hay producto seleccionado
+    if (productoId) {
+      try {
+        const res = await api.get(`/productos/${productoId}/siguiente-lote`);
+        setNuevaLinea(prev => ({
+          ...prev,
+          numero_lote: res.data.sugerencia || "",
+        }));
+      } catch (error) {
+        console.log("No se pudo obtener sugerencia de lote");
+      }
+    }
   };
 
   // ============================
@@ -618,11 +638,13 @@ export default function Ingresos() {
         )}
 
         {comprasFiltradas.length > 0 && (
-          <div className="mt-4">
+          <div className="mt-4 border-t border-gray-200">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
+              totalItems={comprasFiltradas.length}
+              itemsPerPage={itemsPerPage}
             />
           </div>
         )}
@@ -732,16 +754,32 @@ export default function Ingresos() {
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 items-end">
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-500 mb-1">
-                      Fecha de expiración (opcional)
-                    </label>
-                    <input
-                      type="date"
-                      value={nuevaLinea.fecha_expiracion}
-                      onChange={(e) => setNuevaLinea({ ...nuevaLinea, fecha_expiracion: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                    />
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">
+                        Número de Lote {nuevaLinea.numero_lote && <span className="text-purple-600">(sugerido)</span>}
+                      </label>
+                      <input
+                        type="text"
+                        value={nuevaLinea.numero_lote}
+                        onChange={(e) => setNuevaLinea({ ...nuevaLinea, numero_lote: e.target.value })}
+                        placeholder="Se sugiere automáticamente..."
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm ${
+                          nuevaLinea.numero_lote ? "border-purple-300 bg-purple-50" : "border-gray-300"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">
+                        Fecha de expiración (opcional)
+                      </label>
+                      <input
+                        type="date"
+                        value={nuevaLinea.fecha_expiracion}
+                        onChange={(e) => setNuevaLinea({ ...nuevaLinea, fecha_expiracion: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                      />
+                    </div>
                   </div>
                   <button
                     onClick={agregarLinea}
@@ -761,6 +799,7 @@ export default function Ingresos() {
                     <thead className="bg-gray-100">
                       <tr className="text-gray-600">
                         <th className="px-4 py-3 text-left">Producto</th>
+                        <th className="px-4 py-3 text-center">Lote</th>
                         <th className="px-4 py-3 text-center">Cantidad</th>
                         <th className="px-4 py-3 text-right">P. Unitario</th>
                         <th className="px-4 py-3 text-center">Expiración</th>
@@ -781,6 +820,15 @@ export default function Ingresos() {
                           </td>
                           {editandoLinea === idx ? (
                             <>
+                              <td className="px-4 py-2 text-center">
+                                <input
+                                  type="text"
+                                  value={lineaEditada.numero_lote}
+                                  onChange={(e) => setLineaEditada({ ...lineaEditada, numero_lote: e.target.value })}
+                                  placeholder="Lote"
+                                  className="w-20 px-2 py-1 border border-purple-400 rounded text-center text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                                />
+                              </td>
                               <td className="px-4 py-2 text-center">
                                 <input
                                   type="number"
@@ -833,6 +881,15 @@ export default function Ingresos() {
                             </>
                           ) : (
                             <>
+                              <td className="px-4 py-3 text-center">
+                                {linea.numero_lote ? (
+                                  <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-semibold">
+                                    {linea.numero_lote}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">Auto</span>
+                                )}
+                              </td>
                               <td className="px-4 py-3 text-center">{linea.cantidad}</td>
                               <td className="px-4 py-3 text-right">${linea.precio_unitario.toFixed(2)}</td>
                               <td className="px-4 py-3 text-center">

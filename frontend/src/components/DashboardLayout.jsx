@@ -10,6 +10,8 @@ import Categoria from "../pages/Categoria";
 import Facturacion from "../pages/Facturacion";
 import Ingresos from "../pages/Ingresos";
 import Egresos from "../pages/Egresos";
+import Kardex from "../pages/Kardex";
+import Lotes from "../pages/Lotes";
 import Error403 from "../pages/Error403";
 import Error404 from "../pages/Error404";
 
@@ -21,6 +23,8 @@ const sectionComponents = {
   [DASHBOARD_SECTIONS.INGRESOS]: Ingresos,
   [DASHBOARD_SECTIONS.EGRESOS]: Egresos,
   [DASHBOARD_SECTIONS.FACTURACION]: Facturacion,
+  [DASHBOARD_SECTIONS.KARDEX]: Kardex,
+  [DASHBOARD_SECTIONS.LOTES]: Lotes,
   [DASHBOARD_SECTIONS.FORBIDDEN]: Error403,
   [DASHBOARD_SECTIONS.NOT_FOUND]: Error404,
 };
@@ -33,6 +37,8 @@ const sectionRoles = {
   [DASHBOARD_SECTIONS.INGRESOS]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.EGRESOS]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.FACTURACION]: ["administrador", "empleado"],
+  [DASHBOARD_SECTIONS.KARDEX]: ["administrador", "empleado"],
+  [DASHBOARD_SECTIONS.LOTES]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.VENTAS]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.CONFIGURACION]: ["administrador"],
 };
