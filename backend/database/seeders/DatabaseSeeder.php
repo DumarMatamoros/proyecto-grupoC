@@ -23,6 +23,9 @@ class DatabaseSeeder extends Seeder
         // Cargar configuraciones primero
         $this->call(ConfiguracionSeeder::class);
 
+        // Crear permisos y roles
+        $this->call(PermissionSeeder::class);
+
         // Crear Super Administrador del sistema
         $this->call(SuperAdminSeeder::class);
 
@@ -111,5 +114,31 @@ class DatabaseSeeder extends Seeder
                 'permisos' => json_encode(['usuarios' => true, 'reportes' => true]),
             ]);
         }
+
+        // Crear categorías
+        $this->call(CategoriaSeeder::class);
+
+        // Crear impuestos
+        $this->call(ImpuestoSeeder::class);
+
+        // Crear productos
+        $this->call(ProductoSeeder::class);
+
+        // Crear compras y detalles
+        $this->call(CompraSeeder::class);
+
+        // Crear consumidor final
+        $this->call(ConsumidorFinalSeeder::class);
+
+        // Crear facturas y detalles
+        $this->call(FacturaSeeder::class);
+
+        // Crear egresos
+        $this->call(EgresoSeeder::class);
+
+        // Crear pagos
+        $this->call(PagoSeeder::class);
+
+        $this->command->info('✅ Base de datos poblada exitosamente');
     }
 }
