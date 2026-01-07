@@ -2,77 +2,141 @@
 
 namespace Database\Factories;
 
+use App\Models\Cliente;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Cliente>
+ * Factory para crear clientes de prueba.
+ * 
+ * Los clientes son entidades externas para facturación (sin login).
  */
 class ClienteFactory extends Factory
 {
+    protected $model = Cliente::class;
+
     /**
      * Define the model's default state.
-     *
-     * @return array<string, mixed>
      */
     public function definition(): array
     {
+        $idType = fake()->randomElement(['CEDULA', 'RUC', 'PASAPORTE']);
+        
         return [
-            'usuario_id' => null, // Se asignará al crear
-            'ruc_cedula' => $this->generarCedulaValida(),
-            'razon_social' => fake()->optional()->company(),
+            'id_type' => $idType,
+            'id_number' => $this->generateIdNumber($idType),
+            'razon_social' => $idType === 'RUC' ? fake()->company() : fake()->name(),
             'direccion' => fake()->address(),
             'telefono' => $this->generarTelefonoValido(),
-            'tipo' => fake()->randomElement(['natural', 'juridica']),
+            'email' => fake()->unique()->safeEmail(),
+            'is_active' => true,
+            'notes' => fake()->optional(0.3)->sentence(),
         ];
     }
 
     /**
-     * Generar una cédula válida ecuatoriana.
+     * Estado: Cliente con RUC (persona jurídica).
+     */
+    public function empresa(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'id_type' => 'RUC',
+            'id_number' => $this->generarRucValido(),
+            'razon_social' => fake()->company() . ' ' . fake()->companySuffix(),
+        ]);
+    }
+
+    /**
+     * Estado: Cliente con cédula (persona natural).
+     */
+    public function personaNatural(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'id_type' => 'CEDULA',
+            'id_number' => $this->generarCedulaValida(),
+            'razon_social' => fake()->name(),
+        ]);
+    }
+
+    /**
+     * Estado: Cliente extranjero con pasaporte.
+     */
+    public function extranjero(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'id_type' => 'PASAPORTE',
+            'id_number' => strtoupper(fake()->bothify('??######')),
+            'razon_social' => fake()->name(),
+        ]);
+    }
+
+    /**
+     * Estado: Cliente inactivo.
+     */
+    public function inactivo(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_active' => false,
+        ]);
+    }
+
+    /**
+     * Generar número de identificación según tipo.
+     */
+    private function generateIdNumber(string $type): string
+    {
+        return match($type) {
+            'RUC' => $this->generarRucValido(),
+            'CEDULA' => $this->generarCedulaValida(),
+            'PASAPORTE' => strtoupper(fake()->bothify('??######')),
+            default => $this->generarCedulaValida(),
+        };
+    }
+
+    /**
+     * Generar una cédula válida ecuatoriana (10 dígitos).
      */
     private function generarCedulaValida(): string
     {
-        // Generar 9 dígitos aleatorios
-        $primerosDos = str_pad(random_int(1, 24), 2, '0', STR_PAD_LEFT); // Código de provincia
+        $provincia = str_pad(random_int(1, 24), 2, '0', STR_PAD_LEFT);
+        $tercerDigito = random_int(0, 5);
         $siguientes = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $primerosNueve = $primerosDos . $siguientes;
+        $primerosNueve = $provincia . $tercerDigito . $siguientes;
 
-        // Calcular el dígito verificador
-        $coeficientes = [2, 3, 4, 5, 6, 7, 8, 9, 2];
+        // Algoritmo módulo 10
+        $coeficientes = [2, 1, 2, 1, 2, 1, 2, 1, 2];
         $suma = 0;
 
         for ($i = 0; $i < 9; $i++) {
-            $digito = intval(substr($primerosNueve, $i, 1));
-            $producto = $digito * $coeficientes[$i];
-
-            if ($producto > 9) {
-                $producto -= 9;
-            }
-
-            $suma += $producto;
+            $producto = intval($primerosNueve[$i]) * $coeficientes[$i];
+            $suma += $producto > 9 ? $producto - 9 : $producto;
         }
 
         $verificador = (10 - ($suma % 10)) % 10;
-
+        
         return $primerosNueve . $verificador;
     }
 
     /**
-     * Generar un teléfono válido ecuatoriano.
+     * Generar un RUC válido ecuatoriano (13 dígitos).
+     */
+    private function generarRucValido(): string
+    {
+        // RUC = Cédula + 001
+        return $this->generarCedulaValida() . '001';
+    }
+
+    /**
+     * Generar teléfono válido ecuatoriano.
      */
     private function generarTelefonoValido(): string
     {
-        // Números válidos: comienzan con 0, 2, 6, 9 y tienen 10 dígitos
-        $prefijos = ['09', '06', '02', '023']; // Celular y fijo
-        $prefijo = fake()->randomElement($prefijos);
-
-        if (strlen($prefijo) === 4) {
-            // Fijo de 4 dígitos iniciales
-            $restante = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            return $prefijo . $restante;
-        } else {
-            // Celular o números regulares
-            $restante = str_pad(random_int(0, 9999999), 8, '0', STR_PAD_LEFT);
-            return $prefijo . $restante;
+        $tipo = fake()->randomElement(['fijo', 'celular']);
+        
+        if ($tipo === 'celular') {
+            return '09' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
         }
+        
+        $codigoArea = fake()->randomElement(['02', '03', '04', '05', '06', '07']);
+        return $codigoArea . str_pad(random_int(0, 9999999), 7, '0', STR_PAD_LEFT);
     }
 }

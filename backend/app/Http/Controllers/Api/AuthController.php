@@ -91,6 +91,7 @@ class AuthController extends Controller
 
             $token = $usuario->createToken('auth_token')->plainTextToken;
 
+            // Incluir flag de cambio de contraseña en la respuesta
             return response()->json([
                 'success' => true,
                 'message' => 'Sesión iniciada exitosamente',
@@ -98,6 +99,7 @@ class AuthController extends Controller
                     'usuario' => $usuario,
                     'token' => $token,
                     'token_type' => 'Bearer',
+                    'must_change_password' => (bool) $usuario->must_change_password,
                 ]
             ], 200);
 
@@ -211,6 +213,65 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al actualizar perfil',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Cambiar contraseña obligatoria (primer login).
+     * 
+     * Esta ruta se usa cuando must_change_password es true.
+     * Requiere la contraseña actual y la nueva contraseña.
+     */
+    public function cambiarClaveObligatoria(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'password_actual' => 'required|string',
+                'password' => 'required|string|min:8|confirmed|different:password_actual',
+            ], [
+                'password.min' => 'La nueva contraseña debe tener al menos 8 caracteres',
+                'password.confirmed' => 'Las contraseñas no coinciden',
+                'password.different' => 'La nueva contraseña debe ser diferente a la actual',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Errores de validación',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $usuario = $request->user();
+
+            // Verificar contraseña actual
+            if (!Hash::check($request->password_actual, $usuario->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La contraseña actual es incorrecta'
+                ], 401);
+            }
+
+            // Actualizar contraseña y desactivar flag
+            $usuario->password = Hash::make($request->password);
+            $usuario->must_change_password = false;
+            $usuario->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Contraseña actualizada exitosamente. Ya puede acceder al sistema.',
+                'data' => [
+                    'usuario' => $usuario,
+                    'must_change_password' => false,
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cambiar contraseña',
                 'error' => $e->getMessage()
             ], 500);
         }

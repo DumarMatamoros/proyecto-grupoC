@@ -6,6 +6,7 @@ export default function ProtectedRoute({ children, allowed = [] }) {
   const location = useLocation();
   const [checking, setChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -25,6 +26,13 @@ export default function ProtectedRoute({ children, allowed = [] }) {
         return;
       }
 
+      // Verificar si debe cambiar contraseña
+      if (user.must_change_password || authService.mustChangePassword()) {
+        setMustChangePassword(true);
+        setChecking(false);
+        return;
+      }
+
       const ok = authService.hasRole(allowed);
       setAuthorized(ok);
       setChecking(false);
@@ -38,6 +46,11 @@ export default function ProtectedRoute({ children, allowed = [] }) {
 
   if (!authService.isAuthenticated()) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Si debe cambiar contraseña, redirigir a la página de cambio
+  if (mustChangePassword) {
+    return <Navigate to="/cambiar-clave" replace />;
   }
 
   if (!authorized) {

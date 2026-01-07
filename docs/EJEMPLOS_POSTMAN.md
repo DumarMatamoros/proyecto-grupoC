@@ -1,286 +1,262 @@
-# 📊 Postman - Colección de Ejemplos
+# 🇪🇨 POSTMAN · COLECCIÓN DE EJEMPLOS
+## Sistema de Facturación Electrónica – Ecuador
 
-Copiar y pegar cada sección en Postman como requests separados.
+Moneda: USD  
+IVA: 15%  
+Cédula: 10 dígitos  
+RUC: 13 dígitos  
+Consumidor Final: 9999999999999
 
----
+==================================================
 
 ## 🔐 AUTENTICACIÓN
 
 ### Login
-```
 POST http://localhost:8000/api/auth/login
 
 {
   "email": "admin@example.com",
   "password": "password"
 }
-```
-📌 **Guardar el token en variable** `token` de Postman
+
+--------------------------------------------------
 
 ### Ver Mi Perfil
-```
 GET http://localhost:8000/api/auth/me
 Authorization: Bearer {{token}}
-```
 
----
+==================================================
 
 ## 📄 FACTURACIÓN
 
-### Crear Factura - Cliente
-```
+### Crear Factura – Cliente
 POST http://localhost:8000/api/facturas
 Authorization: Bearer {{token}}
 
 {
   "cliente_id": 1,
-  "cedula_cliente": "1010334256",
-  "nombre_cliente": "Tienda ABC",
+  "cedula_cliente": "0912345678",
+  "nombre_cliente": "Comercial La Favorita",
   "sucursal_id": 1,
   "items": [
     {
       "producto_id": 1,
       "cantidad": 2,
-      "precio_unitario": 100
+      "precio_unitario": 12.50
     }
   ]
 }
-```
 
-### Crear Factura - Consumidor Final ⭐
-```
+--------------------------------------------------
+
+### Crear Factura – Consumidor Final
 POST http://localhost:8000/api/facturas
 Authorization: Bearer {{token}}
 
 {
-  "cedula_cliente": "9999999999",
+  "cedula_cliente": "9999999999999",
   "nombre_cliente": "CONSUMIDOR FINAL",
   "sucursal_id": 1,
   "items": [
     {
-      "producto_id": 1,
+      "producto_id": 2,
       "cantidad": 1,
-      "precio_unitario": 150
+      "precio_unitario": 5.00
     }
   ]
 }
-```
+
+--------------------------------------------------
 
 ### Listar Facturas
-```
 GET http://localhost:8000/api/facturas
 Authorization: Bearer {{token}}
-```
 
-### Ver Factura (ID=1)
-```
+--------------------------------------------------
+
+### Ver Factura (ID = 1)
 GET http://localhost:8000/api/facturas/1
 Authorization: Bearer {{token}}
-```
+
+--------------------------------------------------
 
 ### Actualizar Factura
-```
 PUT http://localhost:8000/api/facturas/1
 Authorization: Bearer {{token}}
 
 {
   "estado": "emitida"
 }
-```
+
+--------------------------------------------------
 
 ### Eliminar Factura
-```
 DELETE http://localhost:8000/api/facturas/1
 Authorization: Bearer {{token}}
-```
 
----
+==================================================
 
-## 👨‍💼 ADMIN - USUARIOS
+## 👨‍💼 ADMIN · USUARIOS
 
 ### Dashboard
-```
 GET http://localhost:8000/api/admin/dashboard
 Authorization: Bearer {{token}}
-```
+
+--------------------------------------------------
 
 ### Listar Usuarios
-```
 GET http://localhost:8000/api/admin/usuarios
 Authorization: Bearer {{token}}
-```
+
+--------------------------------------------------
 
 ### Listar Solo Clientes
-```
 GET http://localhost:8000/api/admin/usuarios?tipo=cliente
 Authorization: Bearer {{token}}
-```
 
-### Ver Usuario (ID=1)
-```
+--------------------------------------------------
+
+### Ver Usuario (ID = 1)
 GET http://localhost:8000/api/admin/usuarios/1
 Authorization: Bearer {{token}}
-```
 
-### Registrar Nuevo Usuario (Cliente)
-```
+--------------------------------------------------
+
+### Registrar Cliente
 POST http://localhost:8000/api/auth/register
 
 {
-  "nombre": "Nuevo Cliente",
-  "email": "cliente@example.com",
-  "password": "Password123",
-  "password_confirmation": "Password123",
-  "ruc_cedula": "1010334256",
-  "razon_social": "Mi Empresa",
-  "direccion": "Calle 1 y 2",
-  "telefono": "0992123456",
+  "nombre": "Juan Pérez",
+  "email": "juan.perez@correo.ec",
+  "password": "Cliente123",
+  "password_confirmation": "Cliente123",
+  "ruc_cedula": "0912345678001",
+  "razon_social": "JP Servicios Técnicos",
+  "direccion": "Av. 9 de Octubre y Boyacá, Guayaquil",
+  "telefono": "0991234567",
   "tipo": "cliente"
 }
-```
 
-### Registrar Nuevo Administrador
-```
+--------------------------------------------------
+
+### Registrar Administrador
 POST http://localhost:8000/api/auth/register
 
 {
-  "nombre": "Nuevo Admin",
-  "email": "newadmin@example.com",
-  "password": "Password123",
-  "password_confirmation": "Password123",
-  "ruc_cedula": "1010334256",
-  "razon_social": "Admin Company",
-  "direccion": "Calle 1",
-  "telefono": "0992123456",
+  "nombre": "María Rodríguez",
+  "email": "admin@empresa.ec",
+  "password": "Admin12345",
+  "password_confirmation": "Admin12345",
+  "ruc_cedula": "1790012345001",
+  "razon_social": "Empresa Demo S.A.",
+  "direccion": "Av. Amazonas y Naciones Unidas, Quito",
+  "telefono": "0987654321",
   "tipo": "administrador"
 }
-```
 
-### Registrar Nuevo Empleado
-```
+--------------------------------------------------
+
+### Registrar Empleado
 POST http://localhost:8000/api/auth/register
 
 {
-  "nombre": "Nuevo Empleado",
-  "email": "empleado@example.com",
-  "password": "Password123",
-  "password_confirmation": "Password123",
-  "ruc_cedula": "1010334256",
-  "razon_social": "Mi Empleado",
-  "direccion": "Calle 1",
-  "telefono": "0992123456",
+  "nombre": "Carlos Gómez",
+  "email": "carlos.gomez@empresa.ec",
+  "password": "Empleado123",
+  "password_confirmation": "Empleado123",
+  "ruc_cedula": "0923456789",
+  "razon_social": "Empleado Empresa",
+  "direccion": "Cdla. Alborada, Guayaquil",
+  "telefono": "0974561230",
   "tipo": "empleado"
 }
-```
+
+--------------------------------------------------
 
 ### Actualizar Usuario
-```
 PUT http://localhost:8000/api/admin/usuarios/1
 Authorization: Bearer {{token}}
 
 {
-  "nombre": "Nombre Actualizado",
-  "email": "nuevo@example.com"
+  "nombre": "Juan Pérez Actualizado",
+  "email": "juan.actualizado@correo.ec"
 }
-```
+
+--------------------------------------------------
 
 ### Eliminar Usuario
-```
 DELETE http://localhost:8000/api/admin/usuarios/22
 Authorization: Bearer {{token}}
-```
 
-### Mi Información Admin
-```
+--------------------------------------------------
+
+### Mi Información (Admin)
 GET http://localhost:8000/api/admin/info
 Authorization: Bearer {{token}}
-```
+
+--------------------------------------------------
 
 ### Actualizar Mi Perfil
-```
 PUT http://localhost:8000/api/auth/perfil
 Authorization: Bearer {{token}}
 
 {
-  "nombre": "Admin Actualizado",
-  "email": "admin.new@example.com"
+  "nombre": "Administrador Principal",
+  "email": "admin.nuevo@empresa.ec"
 }
-```
 
----
+==================================================
 
 ## ⚙️ CONFIGURACIONES
 
-### Ver IVA (público)
-```
+### Ver IVA (Público)
 GET http://localhost:8000/api/config/iva
-```
+
+--------------------------------------------------
 
 ### Listar Configuraciones
-```
 GET http://localhost:8000/api/admin/configuraciones
 Authorization: Bearer {{token}}
-```
 
-### Cambiar IVA a 18%
-```
+--------------------------------------------------
+
+### Cambiar IVA (15%)
 PUT http://localhost:8000/api/admin/configuraciones-iva
 Authorization: Bearer {{token}}
 
 {
-  "porcentaje": 18
+  "porcentaje": 15
 }
-```
 
----
+==================================================
 
-## 🗄️ VERIFICAR EN POSTGRESQL
+## 🗄️ POSTGRESQL · CONSULTAS
 
-```sql
--- Ver últimas facturas
 SELECT * FROM facturas ORDER BY created_at DESC LIMIT 5;
 
--- Ver configuraciones
 SELECT clave, valor FROM configuraciones;
 
--- Ver IVA actual
 SELECT valor FROM configuraciones WHERE clave = 'iva_porcentaje';
 
--- Contar usuarios
 SELECT COUNT(*) FROM usuarios;
 
--- Ver todos los usuarios y sus tipos
 SELECT usuario_id, nombre, email, tipo FROM usuarios;
 
--- Ver solo administradores
 SELECT usuario_id, nombre, email FROM usuarios WHERE tipo = 'administrador';
 
--- Cambiar un usuario a administrador
 UPDATE usuarios SET tipo = 'administrador' WHERE usuario_id = 5;
 
--- Ver administradores registrados
 SELECT * FROM administradores;
-```
 
----
+==================================================
 
-## ✅ Checklist
+## ✅ CHECKLIST
 
-- [ ] Login funciona
-- [ ] Registrar nuevo usuario
-- [ ] Listar usuarios
-- [ ] Listar solo clientes
-- [ ] Ver usuario
-- [ ] Actualizar usuario
-- [ ] Actualizar mi perfil
-- [ ] Ver info admin
-- [ ] Crear factura cliente
-- [ ] Crear factura consumidor final
-- [ ] Listar facturas
-- [ ] Ver factura
-- [ ] Actualizar factura
-- [ ] Eliminar usuario
-- [ ] Cambiar IVA
-- [ ] Ver datos en BD
-
-**¡Hecho!** 22+ endpoints listos para testear
+[ ] Login  
+[ ] Registrar usuario  
+[ ] Listar usuarios  
+[ ] Crear factura cliente  
+[ ] Crear factura consumidor final  
+[ ] Listar / ver / actualizar factura  
+[ ] Configurar IVA  
+[ ] Verificar datos en BD

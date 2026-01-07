@@ -9,6 +9,9 @@ use App\Models\Empleado;
 use App\Models\Cliente;
 use App\Models\Proveedor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
@@ -255,6 +258,201 @@ class AdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener información de administrador',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Crear un nuevo usuario (solo administrador).
+     * 
+     * El usuario se crea con must_change_password = true para forzar
+     * el cambio de contraseña en el primer login.
+     */
+    public function createUsuario(Request $request)
+    {
+        try {
+            $admin = $request->user();
+
+            // Verificar que sea administrador
+            if ($admin->tipo !== 'administrador') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para realizar esta acción'
+                ], 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'nombre' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:usuarios,email',
+                'tipo' => 'required|string|in:empleado,cliente,proveedor,administrador',
+                'password' => 'nullable|string|min:8',
+            ], [
+                'nombre.required' => 'El nombre es obligatorio',
+                'email.required' => 'El email es obligatorio',
+                'email.unique' => 'Este email ya está registrado',
+                'tipo.required' => 'El tipo de usuario es obligatorio',
+                'tipo.in' => 'El tipo de usuario no es válido',
+                'password.min' => 'La contraseña debe tener al menos 8 caracteres',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Errores de validación',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Generar contraseña temporal si no se proporciona
+            $passwordTemporal = $request->password ?? Str::random(12);
+
+            // Crear el usuario
+            $nuevoUsuario = User::create([
+                'nombre' => $request->nombre,
+                'email' => $request->email,
+                'password' => Hash::make($passwordTemporal),
+                'tipo' => $request->tipo,
+                'must_change_password' => true, // Forzar cambio en primer login
+            ]);
+
+            // Si es administrador, crear registro en tabla administradores
+            if ($request->tipo === 'administrador') {
+                Administrador::create([
+                    'usuario_id' => $nuevoUsuario->usuario_id,
+                    'nivel' => 'moderador',
+                    'permisos' => json_encode(['usuarios' => true, 'reportes' => true]),
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Usuario creado exitosamente',
+                'data' => [
+                    'usuario' => $nuevoUsuario,
+                    'password_temporal' => $passwordTemporal, // Solo se muestra una vez
+                    'instrucciones' => 'El usuario deberá cambiar su contraseña en el primer login.',
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear usuario',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Resetear contraseña de un usuario (solo administrador).
+     * 
+     * Opciones:
+     * - mode: 'manual' → El admin establece la nueva contraseña
+     * - mode: 'force_change' → Solo activa must_change_password (el usuario cambiará en próximo login)
+     * - mode: 'generate' (default) → Genera contraseña temporal y activa must_change_password
+     */
+    public function resetPassword(Request $request, $usuarioId)
+    {
+        try {
+            $admin = $request->user();
+
+            // Verificar que sea administrador
+            if ($admin->tipo !== 'administrador') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permisos para realizar esta acción'
+                ], 403);
+            }
+
+            $usuario = User::findOrFail($usuarioId);
+
+            $mode = $request->input('mode', 'generate');
+
+            switch ($mode) {
+                case 'manual':
+                    // El admin establece la contraseña manualmente
+                    $validator = Validator::make($request->all(), [
+                        'new_password' => 'required|string|min:8|max:100',
+                        'force_change' => 'boolean',
+                    ], [
+                        'new_password.required' => 'La nueva contraseña es requerida',
+                        'new_password.min' => 'La contraseña debe tener al menos 8 caracteres',
+                    ]);
+
+                    if ($validator->fails()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Datos inválidos',
+                            'errors' => $validator->errors(),
+                        ], 422);
+                    }
+
+                    $usuario->password = Hash::make($request->new_password);
+                    $usuario->must_change_password = $request->input('force_change', false);
+                    $usuario->save();
+
+                    // Revocar tokens si se fuerza el cambio
+                    if ($request->input('force_change', false)) {
+                        $usuario->tokens()->delete();
+                    }
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Contraseña actualizada exitosamente',
+                        'data' => [
+                            'usuario_id' => $usuario->usuario_id,
+                            'email' => $usuario->email,
+                            'must_change_password' => $usuario->must_change_password,
+                        ]
+                    ], 200);
+
+                case 'force_change':
+                    // Solo activar el flag para que cambie en próximo login
+                    $usuario->must_change_password = true;
+                    $usuario->save();
+
+                    // Revocar todos los tokens existentes del usuario
+                    $usuario->tokens()->delete();
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'El usuario deberá cambiar su contraseña en el próximo inicio de sesión',
+                        'data' => [
+                            'usuario_id' => $usuario->usuario_id,
+                            'email' => $usuario->email,
+                            'must_change_password' => true,
+                        ]
+                    ], 200);
+
+                case 'generate':
+                default:
+                    // Generar nueva contraseña temporal
+                    $passwordTemporal = Str::random(12);
+
+                    $usuario->password = Hash::make($passwordTemporal);
+                    $usuario->must_change_password = true;
+                    $usuario->save();
+
+                    // Revocar todos los tokens existentes del usuario
+                    $usuario->tokens()->delete();
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Contraseña reseteada exitosamente',
+                        'data' => [
+                            'usuario_id' => $usuario->usuario_id,
+                            'email' => $usuario->email,
+                            'password_temporal' => $passwordTemporal,
+                            'instrucciones' => 'El usuario deberá cambiar su contraseña en el próximo login.',
+                        ]
+                    ], 200);
+            }
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al resetear contraseña',
                 'error' => $e->getMessage()
             ], 500);
         }

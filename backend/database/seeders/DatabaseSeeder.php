@@ -23,6 +23,12 @@ class DatabaseSeeder extends Seeder
         // Cargar configuraciones primero
         $this->call(ConfiguracionSeeder::class);
 
+        // Crear permisos y roles
+        $this->call(PermissionSeeder::class);
+
+        // Crear Super Administrador del sistema
+        $this->call(SuperAdminSeeder::class);
+
         // Crear una sucursal por defecto
         $sucursal = Sucursal::create([
             'nombre' => 'Sucursal Principal',
@@ -59,35 +65,40 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // Crear clientes con sus usuarios
+        // Crear clientes según el nuevo modelo
         for ($i = 0; $i < 8; $i++) {
-            $usuario = User::factory()->create([
-                'tipo' => 'cliente'
-            ]);
-            
             Cliente::create([
-                'usuario_id' => $usuario->usuario_id,
-                'ruc_cedula' => fake()->unique()->numerify('###########'),
-                'razon_social' => fake()->optional()->company(),
+                'id_type' => fake()->randomElement(['RUC', 'CEDULA', 'PASAPORTE']),
+                'id_number' => fake()->unique()->numerify('###########'),
+                'razon_social' => fake()->company(), // Siempre asigna un valor
                 'direccion' => fake()->address(),
                 'telefono' => fake()->phoneNumber(),
-                'tipo' => fake()->randomElement(['natural', 'juridica']),
+                'email' => fake()->optional()->safeEmail(),
+                'is_active' => true,
+                'notes' => fake()->optional()->sentence(),
             ]);
         }
 
         // Crear proveedores con sus usuarios
         for ($i = 0; $i < 5; $i++) {
-            $usuario = User::factory()->create([
-                'tipo' => 'proveedor'
-            ]);
-            
             Proveedor::create([
-                'usuario_id' => $usuario->usuario_id,
-                'ruc' => fake()->unique()->numerify('##############'),
+                'id_type' => fake()->randomElement(['RUC', 'CEDULA', 'PASAPORTE']),
+                'id_number' => fake()->unique()->numerify('##############'),
                 'razon_social' => fake()->company(),
+                'nombre_comercial' => fake()->optional()->companySuffix(),
                 'direccion' => fake()->address(),
                 'telefono' => fake()->phoneNumber(),
                 'sitio_web' => fake()->optional()->url(),
+                'email' => fake()->optional()->safeEmail(),
+                'contacto_nombre' => fake()->optional()->name(),
+                'contacto_telefono' => fake()->optional()->phoneNumber(),
+                'contacto_email' => fake()->optional()->safeEmail(),
+                'tipo_proveedor' => fake()->randomElement(['BIENES', 'SERVICIOS', 'MIXTO']),
+                'banco' => fake()->optional()->company(),
+                'cuenta_bancaria' => fake()->optional()->bankAccountNumber(),
+                'tipo_cuenta' => fake()->optional()->randomElement(['AHORROS', 'CORRIENTE']),
+                'is_active' => true,
+                'notes' => fake()->optional()->sentence(),
             ]);
         }
 
@@ -103,5 +114,31 @@ class DatabaseSeeder extends Seeder
                 'permisos' => json_encode(['usuarios' => true, 'reportes' => true]),
             ]);
         }
+
+        // Crear categorías
+        $this->call(CategoriaSeeder::class);
+
+        // Crear impuestos
+        $this->call(ImpuestoSeeder::class);
+
+        // Crear productos
+        $this->call(ProductoSeeder::class);
+
+        // Crear compras y detalles
+        $this->call(CompraSeeder::class);
+
+        // Crear consumidor final
+        $this->call(ConsumidorFinalSeeder::class);
+
+        // Crear facturas y detalles
+        $this->call(FacturaSeeder::class);
+
+        // Crear egresos
+        $this->call(EgresoSeeder::class);
+
+        // Crear pagos
+        $this->call(PagoSeeder::class);
+
+        $this->command->info('✅ Base de datos poblada exitosamente');
     }
 }

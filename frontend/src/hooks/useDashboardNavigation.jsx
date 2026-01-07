@@ -1,8 +1,11 @@
-import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 // Contexto para la navegación interna del dashboard
 const DashboardNavigationContext = createContext();
+
+// Parámetros vacíos estables (evita re-renders)
+const EMPTY_PARAMS = {};
 
 // Secciones disponibles del dashboard
 export const DASHBOARD_SECTIONS = {
@@ -15,6 +18,9 @@ export const DASHBOARD_SECTIONS = {
   KARDEX: "kardex",
   LOTES: "lotes",
   VENTAS: "ventas",
+  USUARIOS: "usuarios",
+  PERMISOS: "permisos",
+  PERMISOS_USUARIO: "permisos-usuario", // Nueva sección para permisos por usuario
   CONFIGURACION: "configuracion",
   FORBIDDEN: "forbidden",
   NOT_FOUND: "not-found",
@@ -22,6 +28,7 @@ export const DASHBOARD_SECTIONS = {
 
 export function DashboardNavigationProvider({ children }) {
   const [currentSection, setCurrentSection] = useState(DASHBOARD_SECTIONS.PANEL);
+  const [sectionParams, setSectionParams] = useState(EMPTY_PARAMS); // Parámetros adicionales (ej: usuarioId)
   const navigate = useNavigate();
   const location = useLocation();
   const hasInitialized = useRef(false);
@@ -45,13 +52,23 @@ export function DashboardNavigationProvider({ children }) {
     }
   }, [location.pathname, navigate]);
 
-  const navigateTo = (section) => {
+  // Navegar a una sección con parámetros opcionales
+  const navigateTo = (section, params = null) => {
     setCurrentSection(section);
+    setSectionParams(params || EMPTY_PARAMS);
     // La URL permanece como /dashboard
   };
 
+  // Memoizar el valor del contexto para evitar re-renders innecesarios
+  const contextValue = useMemo(() => ({
+    currentSection,
+    sectionParams,
+    navigateTo,
+    DASHBOARD_SECTIONS,
+  }), [currentSection, sectionParams]);
+
   return (
-    <DashboardNavigationContext.Provider value={{ currentSection, navigateTo, DASHBOARD_SECTIONS }}>
+    <DashboardNavigationContext.Provider value={contextValue}>
       {children}
     </DashboardNavigationContext.Provider>
   );

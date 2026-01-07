@@ -51,7 +51,6 @@ php artisan serve --host=127.0.0.1 --port=8000
 ```
 Back disponible en: http://127.0.0.1:8000
 
----
 
 ## 3️⃣ Frontend (React + Vite)
 
@@ -73,7 +72,6 @@ npm run dev
 ```
 Frontend disponible en: http://localhost:5173/
 
----
 
 ## 4️⃣ Probar la aplicación
 
@@ -103,7 +101,6 @@ cd backend
 php artisan migrate:fresh --seed
 ```
 
----
 
 ## 🧪 Comandos útiles
 ```powershell

@@ -62,7 +62,7 @@ export default function ToastNotification() {
           </p>
           <button
             onClick={() => removeToast(toast.id)}
-            className={`text-lg hover:opacity-70 transition ${getTextColor(toast.type)}`}
+            className={`text-lg hover:opacity-70 transition cursor-pointer ${getTextColor(toast.type)}`}
           >
             <FaTimes />
           </button>
