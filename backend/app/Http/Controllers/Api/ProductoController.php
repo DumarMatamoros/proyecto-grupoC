@@ -184,24 +184,58 @@ class ProductoController extends Controller
     }
 
     // ============================================================
-    // ELIMINAR PRODUCTO
+    // CAMBIAR ESTADO (ACTIVAR/DESACTIVAR)
     // ============================================================
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $producto = Producto::findOrFail($id);
 
         try {
+            $nuevoEstado = $producto->estado === 'activo' ? 'inactivo' : 'activo';
+            $producto->estado = $nuevoEstado;
+            $producto->save();
+
+            return response()->json([
+                "success" => true,
+                "message" => $nuevoEstado === 'activo' ? "Producto activado correctamente" : "Producto desactivado correctamente",
+                "data" => $producto->load('categoria')
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                "success" => false,
+                "message" => "Error al cambiar estado: " . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // ============================================================
+    // ELIMINAR PRODUCTO
+    // ============================================================
+    public function destroy($id, Request $request)
+    {
+        $producto = Producto::findOrFail($id);
+        $forzar = $request->query('forzar', false);
+
+        try {
             DB::beginTransaction();
 
-            // Verificar si tiene facturas o compras asociadas (no permitir eliminar)
+            // Verificar si tiene facturas o compras asociadas
             $tieneFacturas = \App\Models\DetalleFactura::where('producto_id', $id)->exists();
             $tieneCompras = \App\Models\DetalleCompra::where('producto_id', $id)->exists();
 
-            if ($tieneFacturas || $tieneCompras) {
+            if (($tieneFacturas || $tieneCompras) && !$forzar) {
                 return response()->json([
                     "success" => false,
-                    "message" => "No se puede eliminar el producto porque tiene ventas o compras registradas. Considere desactivarlo en su lugar."
+                    "message" => "No se puede eliminar el producto porque tiene ventas o compras registradas. Considere desactivarlo en su lugar.",
+                    "tiene_relaciones" => true
                 ], 422);
+            }
+
+            // Si forzar está activo, eliminar las relaciones primero
+            if ($forzar) {
+                \App\Models\DetalleFactura::where('producto_id', $id)->delete();
+                \App\Models\DetalleCompra::where('producto_id', $id)->delete();
             }
 
             // Eliminar movimientos de inventario asociados
