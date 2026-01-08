@@ -22,7 +22,9 @@ class AuthController extends Controller
                 'nombre' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:usuarios',
                 'password' => 'required|string|min:6|confirmed',
-                'tipo' => 'required|string|in:empleado,cliente,proveedor,administrador',
+                'tipo' => 'required|string|in:empleado,cliente,proveedor,administrador,bodeguero,contador',
+                'cedula' => 'nullable|string|max:20',
+                'telefono' => 'nullable|string|max:20',
             ]);
 
             if ($validator->fails()) {

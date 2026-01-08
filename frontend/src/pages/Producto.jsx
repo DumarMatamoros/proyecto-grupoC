@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { FaBox, FaPlus, FaEdit, FaTrash, FaTimes, FaFileImport, FaSlidersH } from "react-icons/fa";
+import { FaBox, FaPlus, FaEdit, FaTrash, FaTimes, FaFileImport, FaSlidersH, FaBan, FaCheck, FaExclamationTriangle, FaCamera, FaCloudUploadAlt } from "react-icons/fa";
 import api from "../services/api";
 import { getErrorMessage } from "../utils/errorTranslator";
 import { PRODUCT_LIMITS } from "../utils/validationLimits";
@@ -18,6 +18,8 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteOptions, setShowDeleteOptions] = useState(null); // Para mostrar opciones cuando tiene relaciones
+  const [togglingEstado, setTogglingEstado] = useState(null); // ID del producto que está cambiando estado
 
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -39,6 +41,7 @@ export default function InventoryPage() {
     precio_final: true,
     iva: true,
     ice: true,
+    estado: true,
   });
 
   const [search, setSearch] = useState("");
@@ -372,22 +375,78 @@ export default function InventoryPage() {
   // ============================
   // ELIMINAR
   // ============================
-  const eliminarProducto = async (id) => {
+  const eliminarProducto = (id) => {
+    console.log("eliminarProducto llamado con id:", id);
     setConfirmDelete(id);
   };
 
-  const confirmarEliminar = async () => {
+  const confirmarEliminar = async (forzar = false) => {
     try {
       setDeleting(true);
-      await api.delete(`/productos/${confirmDelete}`);
+      const url = forzar ? `/productos/${confirmDelete}?forzar=1` : `/productos/${confirmDelete}`;
+      await api.delete(url);
       toast.success("Producto eliminado correctamente");
       setConfirmDelete(null);
+      setShowDeleteOptions(null);
+      cargarProductos();
+    } catch (error) {
+      console.error("Error eliminando producto:", error);
+      // Si el error indica que tiene relaciones, mostrar opciones
+      if (error.response?.data?.tiene_relaciones) {
+        setShowDeleteOptions(confirmDelete);
+        setConfirmDelete(null);
+      } else {
+        toast.error(getErrorMessage(error) || "Error al eliminar producto");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Eliminar forzadamente (con relaciones)
+  const eliminarForzado = async () => {
+    try {
+      setDeleting(true);
+      await api.delete(`/productos/${showDeleteOptions}?forzar=1`);
+      toast.success("Producto eliminado completamente");
+      setShowDeleteOptions(null);
       cargarProductos();
     } catch (error) {
       console.error("Error eliminando producto:", error);
       toast.error(getErrorMessage(error) || "Error al eliminar producto");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // Desactivar producto
+  const desactivarProducto = async () => {
+    try {
+      setDeleting(true);
+      await api.patch(`/productos/${showDeleteOptions}/estado`);
+      toast.success("Producto desactivado correctamente");
+      setShowDeleteOptions(null);
+      cargarProductos();
+    } catch (error) {
+      console.error("Error desactivando producto:", error);
+      toast.error(getErrorMessage(error) || "Error al desactivar producto");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Cambiar estado (activar/desactivar) desde botón directo
+  const toggleEstado = async (id) => {
+    try {
+      setTogglingEstado(id);
+      const response = await api.patch(`/productos/${id}/estado`);
+      toast.success(response.data.message);
+      cargarProductos();
+    } catch (error) {
+      console.error("Error cambiando estado:", error);
+      toast.error(getErrorMessage(error) || "Error al cambiar estado");
+    } finally {
+      setTogglingEstado(null);
     }
   };
 
@@ -420,23 +479,27 @@ export default function InventoryPage() {
       cols.push({
         accessorKey: "imagen",
         header: "Imagen",
-        size: 75,
-        minSize: 75,
-        maxSize: 75,
+        size: 80,
+        minSize: 80,
+        maxSize: 80,
         enableSorting: false,
         enableResizing: false,
         truncate: false,
-        cell: ({ row }) => (
-          <ImageWithFallback
-            src={
-              row.original.imagen
-                ? `http://127.0.0.1:8000/storage/${row.original.imagen}`
-                : null
-            }
-            className="w-10 h-10 object-cover rounded"
-            enableLightbox={true}
-          />
-        ),
+        cell: ({ row }) => {
+          const imagenUrl = row.original.imagen
+            ? `http://127.0.0.1:8000/storage/${row.original.imagen}`
+            : null;
+          return (
+            <div className="flex justify-center">
+              <ImageWithFallback
+                src={imagenUrl}
+                alt={row.original.nombre}
+                className="w-12 h-12 object-cover rounded-lg border border-gray-200 shadow-sm"
+                enableLightbox={true}
+              />
+            </div>
+          );
+        },
       });
     }
 
@@ -578,13 +641,43 @@ export default function InventoryPage() {
       });
     }
 
+    // Columna de estado
+    if (visibleCols.estado) {
+      cols.push({
+        accessorKey: "estado",
+        header: "Estado",
+        size: 90,
+        minSize: 80,
+        maxSize: 100,
+        truncate: false,
+        cell: ({ row }) => {
+          const estado = row.original.estado;
+          const isToggling = togglingEstado === row.original.producto_id;
+          return (
+            <button
+              onClick={() => toggleEstado(row.original.producto_id)}
+              disabled={isToggling}
+              className={`px-2 py-1 rounded-full text-xs font-semibold transition cursor-pointer ${
+                estado === 'activo' 
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                  : 'bg-red-100 text-red-700 hover:bg-red-200'
+              } ${isToggling ? 'opacity-50' : ''}`}
+              title={estado === 'activo' ? 'Clic para desactivar' : 'Clic para activar'}
+            >
+              {isToggling ? '...' : estado === 'activo' ? 'Activo' : 'Inactivo'}
+            </button>
+          );
+        },
+      });
+    }
+
     // Columna de acciones
     cols.push({
       accessorKey: "acciones",
       header: "Acciones",
-      size: 100,
-      minSize: 100,
-      maxSize: 100,
+      size: 120,
+      minSize: 120,
+      maxSize: 130,
       enableSorting: false,
       enableResizing: false,
       truncate: false,
@@ -598,9 +691,21 @@ export default function InventoryPage() {
             <FaEdit className="text-sm" />
           </button>
           <button
+            onClick={() => toggleEstado(row.original.producto_id)}
+            disabled={togglingEstado === row.original.producto_id}
+            className={`w-8 h-8 flex items-center justify-center text-white rounded transition cursor-pointer ${
+              row.original.estado === 'activo' 
+                ? 'bg-yellow-500 hover:bg-yellow-600' 
+                : 'bg-green-500 hover:bg-green-600'
+            }`}
+            title={row.original.estado === 'activo' ? 'Desactivar' : 'Activar'}
+          >
+            {row.original.estado === 'activo' ? <FaBan className="text-sm" /> : <FaCheck className="text-sm" />}
+          </button>
+          <button
             onClick={() => eliminarProducto(row.original.producto_id)}
             className="w-8 h-8 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded transition cursor-pointer"
-            title="Eliminar"
+            title="Eliminar permanentemente"
           >
             <FaTrash className="text-sm" />
           </button>
@@ -609,7 +714,7 @@ export default function InventoryPage() {
     });
 
     return cols;
-  }, [visibleCols]);
+  }, [visibleCols, togglingEstado]);
 
   // ============================
   // VISTA
@@ -774,6 +879,15 @@ export default function InventoryPage() {
                       />
                       ICE
                     </label>
+                    <label className="flex items-center gap-2 text-sm py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
+                      <input
+                        type="checkbox"
+                        checked={visibleCols.estado}
+                        onChange={(e) => setVisibleCols({ ...visibleCols, estado: e.target.checked })}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      Estado
+                    </label>
                   </div>
                 </div>
               )}
@@ -809,17 +923,86 @@ export default function InventoryPage() {
       
       {confirmDelete && (
         <ConfirmDialog
+          isOpen={!!confirmDelete}
           title="Eliminar Producto"
           message="¿Está seguro de que desea eliminar este producto? Esta acción no se puede deshacer."
-          onConfirm={confirmarEliminar}
+          onConfirm={() => confirmarEliminar(false)}
           onCancel={() => setConfirmDelete(null)}
           isLoading={deleting}
         />
       )}
 
+      {/* Modal de opciones cuando el producto tiene ventas/compras */}
+      {showDeleteOptions && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-[100]" 
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
+          onClick={() => !deleting && setShowDeleteOptions(null)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-2xl max-w-md p-6 mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <FaExclamationTriangle className="text-3xl text-yellow-500" />
+              <h2 className="text-xl font-bold text-gray-800">Producto con Historial</h2>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              Este producto tiene <span className="font-semibold text-red-600">ventas o compras registradas</span>. 
+              ¿Qué desea hacer?
+            </p>
+
+            <div className="space-y-3">
+              {/* Opción 1: Desactivar */}
+              <button
+                onClick={desactivarProducto}
+                disabled={deleting}
+                className="w-full flex items-center gap-3 p-4 border-2 border-yellow-300 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition cursor-pointer disabled:opacity-50"
+              >
+                <FaBan className="text-2xl text-yellow-600" />
+                <div className="text-left">
+                  <p className="font-semibold text-gray-800">Desactivar producto</p>
+                  <p className="text-sm text-gray-500">El producto no aparecerá disponible pero se mantiene el historial</p>
+                </div>
+              </button>
+
+              {/* Opción 2: Eliminar forzado */}
+              <button
+                onClick={eliminarForzado}
+                disabled={deleting}
+                className="w-full flex items-center gap-3 p-4 border-2 border-red-300 bg-red-50 hover:bg-red-100 rounded-lg transition cursor-pointer disabled:opacity-50"
+              >
+                <FaTrash className="text-2xl text-red-600" />
+                <div className="text-left">
+                  <p className="font-semibold text-gray-800">Eliminar completamente</p>
+                  <p className="text-sm text-gray-500">⚠️ Se perderá el historial de ventas y compras</p>
+                </div>
+              </button>
+
+              {/* Cancelar */}
+              <button
+                onClick={() => setShowDeleteOptions(null)}
+                disabled={deleting}
+                className="w-full p-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition cursor-pointer disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+
+            {deleting && (
+              <div className="mt-4 text-center text-gray-500">
+                Procesando...
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Confirmar descartar cambios */}
       {confirmDiscard && (
         <ConfirmDialog
+          isOpen={!!confirmDiscard}
           title="Descartar cambios"
           message="Hay cambios sin guardar. ¿Está seguro de que desea descartar los cambios?"
           onConfirm={handleConfirmDiscard}
@@ -1010,23 +1193,26 @@ export default function InventoryPage() {
               {editing ? "Editar Producto" : "Nuevo Producto"}
             </h2>
 
-            {/* PREVIEW */}
+            {/* PREVIEW DE IMAGEN */}
             <div
-              className={`w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 mx-auto mb-4 sm:mb-6 lg:mb-8 rounded-lg sm:rounded-xl border-2 flex items-center justify-center cursor-pointer transition ${
+              className={`w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 mx-auto mb-4 sm:mb-6 lg:mb-8 rounded-lg sm:rounded-xl border-2 flex items-center justify-center cursor-pointer transition overflow-hidden ${
                 dragActive
                   ? "bg-blue-50 border-blue-400"
-                  : "bg-gray-50 border-gray-300 border-dashed"
+                  : "bg-gray-100 border-gray-300 border-dashed hover:bg-gray-200 hover:border-blue-400"
               }`}
               onClick={() => document.getElementById("inputFile").click()}
             >
               {preview ? (
                 <img
                   src={preview}
-                  className="w-full h-full rounded-lg sm:rounded-xl object-cover"
+                  className="w-full h-full object-cover"
+                  onError={() => setPreview(null)}
                 />
               ) : (
-                <div className="text-center text-gray-500 px-2">
-                  <div className="text-xs sm:text-sm">Arrastre o seleccione un archivo</div>
+                <div className="text-center text-gray-400 px-4">
+                  <FaCloudUploadAlt className="text-4xl sm:text-5xl mx-auto mb-2 text-gray-300" />
+                  <div className="text-xs sm:text-sm font-medium">Clic o arrastra imagen</div>
+                  <div className="text-xs text-gray-400 mt-1">PNG, JPG hasta 4MB</div>
                 </div>
               )}
             </div>
@@ -1035,6 +1221,7 @@ export default function InventoryPage() {
               id="inputFile"
               type="file"
               name="imagen"
+              accept="image/png, image/jpeg, image/jpg, image/webp"
               className="hidden"
               onChange={handleChange}
             />

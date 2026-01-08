@@ -45,8 +45,9 @@ Route::get('/health', function () {
 // CATEGORÍAS (mover a rutas protegidas)
 // PRODUCTOS (mover a rutas protegidas)
 
-// AUTENTICACIÓN (sin registro público - usuarios creados solo por admin)
+// AUTENTICACIÓN
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/register', [AuthController::class, 'register']);
 
 // CONSULTAR IVA SIN AUTENTICAR
 Route::get('/config/iva', [ConfiguracionController::class, 'obtenerIVA']);
@@ -81,6 +82,8 @@ Route::middleware('auth:sanctum')->group(function () {
             ->middleware('check.role:administrador');
         Route::put('/categorias/{id}', [CategoriaController::class, 'update'])
             ->middleware('check.role:administrador');
+        Route::patch('/categorias/{id}/estado', [CategoriaController::class, 'cambiarEstado'])
+            ->middleware('check.role:administrador');
         Route::delete('/categorias/{id}', [CategoriaController::class, 'destroy'])
             ->middleware('check.role:administrador');
 
@@ -91,8 +94,10 @@ Route::middleware('auth:sanctum')->group(function () {
             ->middleware('check.role:administrador,empleado');
         Route::put('/productos/{id}', [ProductoController::class, 'update'])
             ->middleware('check.role:administrador,empleado');
+        Route::patch('/productos/{id}/estado', [ProductoController::class, 'cambiarEstado'])
+            ->middleware('check.role:administrador,empleado');
         Route::delete('/productos/{id}', [ProductoController::class, 'destroy'])
-            ->middleware('check.role:administrador');
+            ->middleware('check.role:administrador,empleado');
         Route::post('/productos/import/preview', [ProductoController::class, 'importPreview'])
             ->middleware('check.role:administrador,empleado');
         Route::post('/productos/import/confirm', [ProductoController::class, 'importConfirm'])
