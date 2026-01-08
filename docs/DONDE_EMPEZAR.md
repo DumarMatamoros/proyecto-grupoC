@@ -102,6 +102,7 @@ SELECT * FROM facturas WHERE cedula_cliente = '9999999999';
 ## 📎 Guías recomendadas
 
 - Instalación desde cero y arranque: [docs/EJECUTAR_PROYECTO.md](EJECUTAR_PROYECTO.md)
+- Dockerizar y levantar todo con contenedores: [docs/DOCKER.md](DOCKER.md)
 - Ejemplos de endpoints en Postman: [docs/EJEMPLOS_POSTMAN.md](EJEMPLOS_POSTMAN.md)
 
 ---
