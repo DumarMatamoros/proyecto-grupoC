@@ -121,6 +121,13 @@ export default function Facturacion() {
   const [observaciones, setObservaciones] = useState("");
   const [descuentoGeneral, setDescuentoGeneral] = useState(0);
 
+  // Estados para búsqueda de cliente
+  const [buscandoCliente, setBuscandoCliente] = useState(false);
+  const [clienteEncontrado, setClienteEncontrado] = useState(null);
+  const [mostrarFormCrearCliente, setMostrarFormCrearCliente] = useState(false);
+  const [creandoCliente, setCreandoCliente] = useState(false);
+  const [modalCrearCliente, setModalCrearCliente] = useState(false);
+
   // Carrito de productos
   const [carrito, setCarrito] = useState([]);
 
@@ -207,13 +214,98 @@ export default function Facturacion() {
   useEffect(() => {
     if (formCliente.esConsumidorFinal) {
       setDocumentoValido({ valid: true, type: "consumidor_final", message: "Consumidor Final" });
+      setClienteEncontrado(null);
+      setMostrarFormCrearCliente(false);
     } else if (formCliente.cedula_cliente) {
       const resultado = validarDocumento(formCliente.cedula_cliente);
       setDocumentoValido(resultado);
+      
+      // Si el documento es válido, buscar en la base de datos
+      if (resultado.valid) {
+        buscarClientePorDocumento(formCliente.cedula_cliente);
+      } else {
+        setClienteEncontrado(null);
+        setMostrarFormCrearCliente(false);
+      }
     } else {
       setDocumentoValido(null);
+      setClienteEncontrado(null);
+      setMostrarFormCrearCliente(false);
     }
   }, [formCliente.cedula_cliente, formCliente.esConsumidorFinal]);
+
+  // Buscar cliente por documento en la base de datos
+  const buscarClientePorDocumento = async (documento) => {
+    if (!documento || documento.length < 10) return;
+    
+    setBuscandoCliente(true);
+    try {
+      const res = await api.get(`/clientes/search?q=${documento}`);
+      const clientes = res.data?.data || [];
+      
+      // Buscar coincidencia exacta
+      const clienteExacto = clientes.find(c => c.id_number === documento);
+      
+      if (clienteExacto) {
+        setClienteEncontrado(clienteExacto);
+        setMostrarFormCrearCliente(false);
+        // Auto-completar datos del cliente
+        setFormCliente(prev => ({
+          ...prev,
+          nombre_cliente: clienteExacto.razon_social || "",
+          direccion_cliente: clienteExacto.direccion || "",
+          telefono_cliente: clienteExacto.telefono || "",
+          email_cliente: clienteExacto.email || "",
+        }));
+        toast.success(`Cliente encontrado: ${clienteExacto.razon_social}`);
+      } else {
+        setClienteEncontrado(null);
+        setMostrarFormCrearCliente(true);
+      }
+    } catch (error) {
+      console.error("Error buscando cliente:", error);
+      setClienteEncontrado(null);
+      setMostrarFormCrearCliente(true);
+    } finally {
+      setBuscandoCliente(false);
+    }
+  };
+
+  // Crear cliente nuevo desde facturación
+  const handleCrearClienteRapido = async () => {
+    if (!formCliente.cedula_cliente || !formCliente.nombre_cliente) {
+      toast.error("Ingrese al menos la identificación y el nombre");
+      return;
+    }
+    
+    setCreandoCliente(true);
+    try {
+      // Determinar tipo de documento
+      const tipoDoc = formCliente.cedula_cliente.length === 13 ? "RUC" : "CEDULA";
+      
+      const nuevoCliente = {
+        id_type: tipoDoc,
+        id_number: formCliente.cedula_cliente,
+        razon_social: formCliente.nombre_cliente,
+        direccion: formCliente.direccion_cliente || "Sin dirección",
+        telefono: formCliente.telefono_cliente || null,
+        email: formCliente.email_cliente || null,
+      };
+      
+      const res = await api.post("/clientes", nuevoCliente);
+      const clienteCreado = res.data?.data;
+      
+      setClienteEncontrado(clienteCreado);
+      setMostrarFormCrearCliente(false);
+      setModalCrearCliente(false);
+      toast.success(`Cliente "${formCliente.nombre_cliente}" creado exitosamente`);
+    } catch (error) {
+      console.error("Error creando cliente:", error);
+      toast.error(error.response?.data?.message || "Error al crear el cliente");
+    } finally {
+      setCreandoCliente(false);
+    }
+  };
 
   // Paginación
   const facturasPaginadas = useMemo(() => {
@@ -396,6 +488,8 @@ export default function Facturacion() {
         email_cliente: "",
         esConsumidorFinal: true,
       });
+      setClienteEncontrado(null);
+      setMostrarFormCrearCliente(false);
     } else {
       setFormCliente({
         cedula_cliente: "",
@@ -405,6 +499,8 @@ export default function Facturacion() {
         email_cliente: "",
         esConsumidorFinal: false,
       });
+      setClienteEncontrado(null);
+      setMostrarFormCrearCliente(false);
     }
   };
 
@@ -423,6 +519,8 @@ export default function Facturacion() {
     setDescuentoGeneral(0);
     setCarrito([]);
     setDocumentoValido(null);
+    setClienteEncontrado(null);
+    setMostrarFormCrearCliente(false);
   };
 
   // Crear factura
@@ -776,6 +874,14 @@ export default function Facturacion() {
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <FaUser className="text-gray-500" /> Cliente
+              {buscandoCliente && (
+                <span className="text-xs text-blue-500 animate-pulse">Buscando...</span>
+              )}
+              {clienteEncontrado && !formCliente.esConsumidorFinal && (
+                <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                  ✓ Registrado
+                </span>
+              )}
             </span>
             <button
               onClick={toggleConsumidorFinal}
@@ -788,37 +894,64 @@ export default function Facturacion() {
               {formCliente.esConsumidorFinal ? "✓ Consumidor Final" : "Consumidor Final"}
             </button>
           </div>
+          
+          {/* Campos de identificación y nombre */}
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={formCliente.cedula_cliente}
-              onChange={(e) => setFormCliente({ ...formCliente, cedula_cliente: e.target.value })}
-              disabled={formCliente.esConsumidorFinal}
-              className={`flex-1 text-sm border rounded-lg px-3 py-2 ${
-                documentoValido
-                  ? documentoValido.valid
-                    ? "border-green-400 bg-green-50"
-                    : "border-red-400 bg-red-50"
-                  : "border-gray-300 bg-white"
-              }`}
-              placeholder="Cédula / RUC"
-              maxLength={13}
-            />
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={formCliente.cedula_cliente}
+                onChange={(e) => setFormCliente({ ...formCliente, cedula_cliente: e.target.value })}
+                disabled={formCliente.esConsumidorFinal}
+                className={`w-full text-sm border rounded-lg px-3 py-2 ${
+                  documentoValido
+                    ? documentoValido.valid
+                      ? clienteEncontrado 
+                        ? "border-green-500 bg-green-50" 
+                        : "border-yellow-400 bg-yellow-50"
+                      : "border-red-400 bg-red-50"
+                    : "border-gray-300 bg-white"
+                }`}
+                placeholder="Cédula / RUC"
+                maxLength={13}
+              />
+              {buscandoCliente && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
+            </div>
             <input
               type="text"
               value={formCliente.nombre_cliente}
               onChange={(e) => setFormCliente({ ...formCliente, nombre_cliente: e.target.value })}
-              disabled={formCliente.esConsumidorFinal}
-              className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white"
+              disabled={formCliente.esConsumidorFinal || clienteEncontrado}
+              className={`flex-1 text-sm border rounded-lg px-3 py-2 ${
+                clienteEncontrado && !formCliente.esConsumidorFinal
+                  ? "border-green-400 bg-green-50"
+                  : "border-gray-300 bg-white"
+              }`}
               placeholder="Nombre"
             />
           </div>
+          
           {/* Mensaje de error de cédula/RUC */}
           {documentoValido && !documentoValido.valid && !formCliente.esConsumidorFinal && (
             <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
               <FaTimes className="text-xs" />
-              {documentoValido.message || 'Cédula o RUC inválido'}
+              {documentoValido.message || 'Documento debe tener 10 (cédula) o 13 (RUC) dígitos'}
             </p>
+          )}
+          
+          {/* Botón para abrir modal de creación de cliente */}
+          {mostrarFormCrearCliente && documentoValido?.valid && !formCliente.esConsumidorFinal && !clienteEncontrado && (
+            <button
+              onClick={() => setModalCrearCliente(true)}
+              className="mt-2 w-full bg-yellow-500 hover:bg-yellow-600 text-white text-sm py-2 rounded-lg font-medium transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <FaPlus className="text-xs" />
+              Cliente no registrado - Crear nuevo
+            </button>
           )}
         </div>
 
@@ -1416,6 +1549,142 @@ export default function Facturacion() {
           isLoading={deleting}
           confirmColor="red"
         />
+      )}
+
+      {/* Modal de creación de cliente */}
+      {modalCrearCliente && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            {/* Header del modal */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <FaUser className="text-white text-lg" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white">Nuevo Cliente</h2>
+                    <p className="text-blue-100 text-xs">Registrar cliente para facturación</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setModalCrearCliente(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition cursor-pointer"
+                >
+                  <FaTimes className="text-white" />
+                </button>
+              </div>
+            </div>
+
+            {/* Formulario */}
+            <div className="p-6 space-y-4">
+              {/* Cédula/RUC - Solo lectura */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Cédula / RUC *
+                </label>
+                <input
+                  type="text"
+                  value={formCliente.cedula_cliente}
+                  readOnly
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 font-mono"
+                />
+              </div>
+
+              {/* Nombre */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nombre / Razón Social *
+                </label>
+                <input
+                  type="text"
+                  value={formCliente.nombre_cliente}
+                  onChange={(e) => setFormCliente({ ...formCliente, nombre_cliente: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Nombre completo o razón social"
+                  autoFocus
+                />
+              </div>
+
+              {/* Dirección */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Dirección *
+                </label>
+                <input
+                  type="text"
+                  value={formCliente.direccion_cliente}
+                  onChange={(e) => setFormCliente({ ...formCliente, direccion_cliente: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Dirección completa"
+                />
+              </div>
+
+              {/* Teléfono y Email en una fila */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Teléfono
+                  </label>
+                  <input
+                    type="text"
+                    value={formCliente.telefono_cliente}
+                    onChange={(e) => setFormCliente({ ...formCliente, telefono_cliente: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="0999999999"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formCliente.email_cliente}
+                    onChange={(e) => setFormCliente({ ...formCliente, email_cliente: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="correo@ejemplo.com"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Botones */}
+            <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-end">
+              <button
+                onClick={() => setModalCrearCliente(false)}
+                className="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  await handleCrearClienteRapido();
+                  if (!creandoCliente) {
+                    setModalCrearCliente(false);
+                  }
+                }}
+                disabled={creandoCliente || !formCliente.nombre_cliente || !formCliente.direccion_cliente}
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition cursor-pointer flex items-center gap-2"
+              >
+                {creandoCliente ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creando...
+                  </>
+                ) : (
+                  <>
+                    <FaPlus />
+                    Crear Cliente
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

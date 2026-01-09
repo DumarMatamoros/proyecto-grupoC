@@ -18,6 +18,8 @@ export const DASHBOARD_SECTIONS = {
   KARDEX: "kardex",
   LOTES: "lotes",
   VENTAS: "ventas",
+  CLIENTES: "clientes",
+  PROVEEDORES: "proveedores",
   USUARIOS: "usuarios",
   PERMISOS: "permisos",
   PERMISOS_USUARIO: "permisos-usuario", // Nueva sección para permisos por usuario

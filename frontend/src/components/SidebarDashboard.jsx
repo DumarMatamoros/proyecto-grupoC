@@ -18,7 +18,9 @@ import {
   FaUsers,
   FaUserShield,
   FaUsersCog,
-  FaListUl
+  FaListUl,
+  FaTruck,
+  FaAddressBook
 } from "react-icons/fa";
 import { useDashboardNavigation, DASHBOARD_SECTIONS } from "../hooks/useDashboardNavigation";
 import authService from "../services/authService";
@@ -37,6 +39,12 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
     DASHBOARD_SECTIONS.INGRESOS,
     DASHBOARD_SECTIONS.EGRESOS,
   ];
+
+  // Secciones de Terceros (Clientes y Proveedores)
+  const tercerosSections = [
+    DASHBOARD_SECTIONS.CLIENTES,
+    DASHBOARD_SECTIONS.PROVEEDORES,
+  ];
   
   // Secciones de Gestión de Acceso
   const accessSections = [
@@ -45,14 +53,20 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
   ];
   
   const isInventoryActive = inventorySections.includes(currentSection);
+  const isTercerosActive = tercerosSections.includes(currentSection);
   const isAccessActive = accessSections.includes(currentSection);
   
   const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
+  const [tercerosOpen, setTercerosOpen] = useState(isTercerosActive);
   const [accessOpen, setAccessOpen] = useState(isAccessActive);
 
   useEffect(() => {
     setInventoryOpen(isInventoryActive);
   }, [isInventoryActive]);
+
+  useEffect(() => {
+    setTercerosOpen(isTercerosActive);
+  }, [isTercerosActive]);
 
   useEffect(() => {
     setAccessOpen(isAccessActive);
@@ -62,6 +76,7 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
   useEffect(() => {
     if (collapsed) {
       setInventoryOpen(false);
+      setTercerosOpen(false);
       setAccessOpen(false);
     }
   }, [collapsed]);
@@ -155,8 +170,8 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
               Gestión
             </div>
             <MenuItem section={DASHBOARD_SECTIONS.PRODUCTOS} icon={FaBox} label="Productos" />
+            <MenuItem section={DASHBOARD_SECTIONS.KARDEX} icon={FaClipboardList} label="Movimientos" />
             <MenuItem section={DASHBOARD_SECTIONS.CATEGORIA} icon={FaTags} label="Categorías" />
-            <MenuItem section={DASHBOARD_SECTIONS.KARDEX} icon={FaClipboardList} label="Kardex" />
             <MenuItem section={DASHBOARD_SECTIONS.LOTES} icon={FaBoxes} label="Lotes" />
 
             {/* Operaciones */}
@@ -173,6 +188,46 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
 
         {/* VENTAS */}
         <MenuItem section={DASHBOARD_SECTIONS.VENTAS} icon={FaShoppingCart} label="Ventas" />
+
+        {/* TERCEROS - Clientes y Proveedores */}
+        <button
+          onClick={() => {
+            if (collapsed) {
+              onToggle();
+              setTercerosOpen(true);
+            } else {
+              setTercerosOpen((prev) => !prev);
+            }
+          }}
+          title={collapsed ? "Terceros" : ""}
+          className={`w-full flex items-center px-3 py-2 rounded-lg transition ${
+            isTercerosActive ? "bg-gray-700" : "hover:bg-gray-800"
+          } ${collapsed ? "justify-center" : "justify-between"}`}
+        >
+          <span className="flex items-center gap-3">
+            <FaAddressBook className="text-lg flex-shrink-0" />
+            {!collapsed && <span>Terceros</span>}
+          </span>
+          {!collapsed && (
+            <FaChevronRight
+              className={`transition-transform duration-200 ${
+                tercerosOpen ? "rotate-90" : "rotate-0"
+              }`}
+            />
+          )}
+        </button>
+
+        {/* Submenú de Terceros */}
+        {!collapsed && (
+          <div
+            className={`space-y-1 ml-4 overflow-hidden transition-all duration-200 ${
+              tercerosOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+            }`}
+          >
+            <MenuItem section={DASHBOARD_SECTIONS.CLIENTES} icon={FaUsers} label="Clientes" />
+            <MenuItem section={DASHBOARD_SECTIONS.PROVEEDORES} icon={FaTruck} label="Proveedores" />
+          </div>
+        )}
 
         {/* GESTIÓN DE ACCESO - Solo visible para administradores */}
         {isAdmin && (

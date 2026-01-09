@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
-import { FaTags, FaPlus, FaEdit, FaTrash, FaTimes, FaBan, FaCheck, FaExclamationTriangle } from "react-icons/fa";
+import { FaTags, FaPlus, FaEdit, FaTrash, FaTimes, FaBan, FaCheck, FaExclamationTriangle, FaFileImport, FaDownload, FaFileExcel } from "react-icons/fa";
+import * as XLSX from "xlsx";
 import api from "../services/api";
 import { getErrorMessage } from "../utils/errorTranslator";
 import { CATEGORY_LIMITS } from "../utils/validationLimits";
@@ -26,6 +27,9 @@ export default function Categoria() {
   const [search, setSearch] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [initialForm, setInitialForm] = useState({ nombre: "", descripcion: "" });
+  const [importModal, setImportModal] = useState(false);
+  const [importPreview, setImportPreview] = useState(null);
+  const [importUploading, setImportUploading] = useState(false);
   const itemsPerPage = 10;
 
   const cargarCategorias = async () => {
@@ -189,6 +193,116 @@ export default function Categoria() {
     }
   };
 
+  // ============================
+  // IMPORTACIÓN MASIVA
+  // ============================
+  const openImport = () => {
+    setImportModal(true);
+    setImportPreview(null);
+  };
+
+  const handleCloseImportModal = () => {
+    setImportModal(false);
+    setImportPreview(null);
+  };
+
+  const handleImportBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      handleCloseImportModal();
+    }
+  };
+
+  const uploadPreview = async (file) => {
+    if (!file) return;
+    try {
+      setImportUploading(true);
+      const formData = new FormData();
+      formData.append('archivo', file);
+      const res = await api.post('/categorias/import/preview', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setImportPreview(res.data);
+      toast.info(`Se detectaron ${res.data.count} categorías`);
+    } catch (error) {
+      console.error('Error en previsualización:', error);
+      toast.error(getErrorMessage(error) || 'Error al previsualizar');
+    } finally {
+      setImportUploading(false);
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!importPreview?.preview?.length) return;
+    try {
+      setImportUploading(true);
+      const res = await api.post('/categorias/import/confirm', { rows: importPreview.preview });
+      toast.success(`Importación: creadas ${res.data.created}, actualizadas ${res.data.updated}`);
+      if (res.data.errors?.length) {
+        toast.warning(`Errores: ${res.data.errors.length}`);
+      }
+      setImportModal(false);
+      setImportPreview(null);
+      cargarCategorias();
+    } catch (error) {
+      console.error('Error confirmando importación:', error);
+      toast.error(getErrorMessage(error) || 'Error al confirmar importación');
+    } finally {
+      setImportUploading(false);
+    }
+  };
+
+  // ============================
+  // DESCARGAR PLANTILLA EXCEL
+  // ============================
+  const descargarPlantillaExcel = () => {
+    const datosPlantilla = [
+      ['📋 PLANTILLA DE IMPORTACIÓN DE CATEGORÍAS - Complete los datos desde la fila 4'],
+      ['⚠️ NO modificar los encabezados de la fila 3. El campo Nombre es obligatorio.'],
+      [],
+      ['Nombre *', 'Descripción'],
+      ['Bebidas', 'Categoría para todo tipo de bebidas'],
+      ['Snacks', 'Bocadillos y aperitivos'],
+      ['Lácteos', 'Productos derivados de la leche'],
+      ['Limpieza', 'Productos de aseo y limpieza del hogar'],
+      ['Carnes', 'Carnes frescas y embutidos'],
+    ];
+
+    const instrucciones = [
+      ['📘 GUÍA DE CAMPOS'],
+      [],
+      ['Campo', 'Obligatorio', 'Descripción', 'Ejemplo'],
+      ['Nombre', 'SÍ', 'Nombre único de la categoría', 'Bebidas'],
+      ['Descripción', 'NO', 'Descripción detallada de la categoría', 'Categoría para bebidas'],
+      [],
+      ['💡 CONSEJOS:'],
+      ['• Si el nombre ya existe, se actualizará la descripción'],
+      ['• Las categorías se crean con estado "activo" por defecto'],
+      ['• Puedes dejar la descripción vacía'],
+    ];
+
+    const wb = XLSX.utils.book_new();
+    
+    const ws = XLSX.utils.aoa_to_sheet(datosPlantilla);
+    ws['!cols'] = [
+      { wch: 25 },
+      { wch: 50 },
+    ];
+
+    const wsInstrucciones = XLSX.utils.aoa_to_sheet(instrucciones);
+    wsInstrucciones['!cols'] = [
+      { wch: 15 },
+      { wch: 12 },
+      { wch: 40 },
+      { wch: 25 },
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Categorías');
+    XLSX.utils.book_append_sheet(wb, wsInstrucciones, 'Instrucciones');
+
+    XLSX.writeFile(wb, 'plantilla_categorias.xlsx');
+    toast.success('Plantilla Excel descargada correctamente');
+  };
+
   useEffect(() => {
     cargarCategorias();
   }, []);
@@ -217,6 +331,12 @@ export default function Categoria() {
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition whitespace-nowrap cursor-pointer"
         >
           <FaPlus /> Agregar Categoría
+        </button>
+        <button
+          onClick={openImport}
+          className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition whitespace-nowrap cursor-pointer"
+        >
+          <FaFileImport /> Importar CSV
         </button>
       </div>
 
@@ -412,6 +532,159 @@ export default function Categoria() {
           confirmingText="Descartando..."
           confirmColor="yellow"
         />
+      )}
+
+      {/* MODAL DE IMPORTACIÓN */}
+      {importModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-3 sm:p-4 z-50" 
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.15)" }}
+          onClick={handleImportBackdropClick}
+        >
+          <div 
+            className="bg-white rounded-lg sm:rounded-xl shadow-2xl p-4 sm:p-6 lg:p-8 w-full max-w-2xl relative max-h-[90vh] overflow-y-auto cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-gray-600 transition cursor-pointer"
+              onClick={handleCloseImportModal}
+              title="Cerrar"
+            >
+              <FaTimes className="text-base sm:text-lg" />
+            </button>
+
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 lg:mb-8 pr-8">Importación de Categorías (CSV/Excel)</h2>
+
+            {!importPreview && (
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Seleccionar archivo CSV para previsualizar:
+                  </label>
+                  <div
+                    className="w-full px-4 py-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition cursor-pointer flex items-center justify-center bg-gray-50 hover:bg-blue-50"
+                    onClick={() => document.getElementById("csvCategoriaInput").click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.dataTransfer.files[0]) {
+                        uploadPreview(e.dataTransfer.files[0]);
+                      }
+                    }}
+                  >
+                    <div className="text-center text-gray-500">
+                      <div className="text-lg font-semibold">Arrastre o seleccione un archivo</div>
+                      <div className="text-sm mt-2">Formatos: CSV</div>
+                    </div>
+                  </div>
+                  <input
+                    id="csvCategoriaInput"
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(e) => uploadPreview(e.target.files[0])}
+                    className="hidden"
+                  />
+                </div>
+
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-gray-700 font-semibold flex items-center gap-2">
+                        <FaFileExcel className="text-green-600" />
+                        Plantilla Excel con instrucciones
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Incluye ejemplos, guía de campos y formato listo para usar
+                      </p>
+                    </div>
+                    <button
+                      onClick={descargarPlantillaExcel}
+                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer whitespace-nowrap"
+                    >
+                      <FaDownload />
+                      Descargar Plantilla Excel
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 font-semibold mb-2">Columnas del archivo CSV:</p>
+                  <p className="text-xs text-gray-600 font-mono break-all bg-white p-3 rounded border border-gray-200">
+                    nombre,descripcion
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs text-gray-600">
+                      <strong>📌 Obligatorio:</strong> nombre
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      <strong>📋 Opcional:</strong> descripcion
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-xs text-gray-700">
+                    <strong>💡 Consejo:</strong> Las categorías se actualizarán si el nombre ya existe, o se crearán si es nuevo.
+                  </p>
+                </div>
+
+                {importUploading && (
+                  <div className="text-center py-4">
+                    <p className="text-gray-600">Cargando archivo...</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {importPreview && (
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-3">
+                    Se detectaron <span className="font-bold text-blue-600">{importPreview.count}</span> categorías para importar:
+                  </p>
+                  <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-300 rounded-lg">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="sticky top-0">
+                        <tr className="bg-gray-100 text-gray-700 uppercase text-xs font-semibold">
+                          <th className="px-3 py-2 border-r">Nombre</th>
+                          <th className="px-3 py-2">Descripción</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPreview.preview.map((r, idx) => (
+                          <tr key={idx} className="border-b hover:bg-gray-50">
+                            <td className="px-3 py-2 border-r text-sm font-medium">{r.nombre || "-"}</td>
+                            <td className="px-3 py-2 text-sm">{r.descripcion || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={confirmImport}
+                    disabled={importUploading}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {importUploading ? "Importando..." : "Confirmar Importación"}
+                  </button>
+                  <button
+                    onClick={handleCloseImportModal}
+                    className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-3 rounded-lg font-semibold transition cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
