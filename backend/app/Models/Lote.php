@@ -132,19 +132,23 @@ class Lote extends Model
     public function darDeBaja(string $motivo, int $cantidadAfectada = null): void
     {
         $cantidadADescontar = $cantidadAfectada ?? $this->cantidad_disponible;
+        $stockActual = $this->producto->stock_actual;
         
         // Registrar movimiento de egreso
         MovimientoInventario::create([
             'producto_id' => $this->producto_id,
             'lote_id' => $this->lote_id,
-            'tipo_movimiento' => 'egreso',
-            'motivo' => 'baja_lote',
+            'tipo_movimiento' => 'SALIDA',
+            'tipo_documento' => 'BAJA_LOTE',
+            'numero_documento' => $this->lote_id,
             'cantidad' => $cantidadADescontar,
-            'stock_anterior' => $this->producto->stock_actual,
-            'stock_nuevo' => $this->producto->stock_actual - $cantidadADescontar,
+            'cantidad_entrada' => 0,
+            'cantidad_salida' => $cantidadADescontar,
+            'stock_resultante' => $stockActual - $cantidadADescontar,
             'costo_unitario' => $this->costo_unitario,
             'referencia' => "Baja Lote {$this->numero_lote}: {$motivo}",
             'fecha' => now(),
+            'observaciones' => $motivo,
         ]);
 
         // Actualizar lote

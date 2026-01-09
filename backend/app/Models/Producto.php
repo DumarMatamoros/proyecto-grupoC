@@ -18,13 +18,17 @@ class Producto extends Model
     protected $fillable = [
         'codigo_principal',
         'codigo_barras',
+        'sku',
         'nombre',
         'marca',
         'unidad_medida',
         'descripcion',
         'precio_costo',
+        'costo_promedio',
         'precio_unitario',
         'precio_con_impuestos',
+        'margen_ganancia',
+        'modo_precio',
         'stock_actual',
         'stock_minimo',
         'stock_maximo',
@@ -34,6 +38,8 @@ class Producto extends Model
         'ice_porcentaje',
         'estado',
         'categoria_id',
+        'proveedor_principal_id',
+        'ubicacion_bodega',
         'imagen'
     ];
 
@@ -41,8 +47,10 @@ class Producto extends Model
         'iva_aplica' => 'boolean',
         'ice_aplica' => 'boolean',
         'precio_costo' => 'decimal:2',
+        'costo_promedio' => 'decimal:4',
         'precio_unitario' => 'decimal:2',
         'precio_con_impuestos' => 'decimal:2',
+        'margen_ganancia' => 'decimal:2',
         'iva_porcentaje' => 'decimal:2',
         'ice_porcentaje' => 'decimal:2',
     ];
@@ -104,6 +112,11 @@ class Producto extends Model
     public function categoria()
     {
         return $this->belongsTo(Categoria::class, 'categoria_id', 'categoria_id');
+    }
+
+    public function proveedorPrincipal()
+    {
+        return $this->belongsTo(Proveedor::class, 'proveedor_principal_id', 'proveedor_id');
     }
 
     public function lotes()

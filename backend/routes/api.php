@@ -86,6 +86,10 @@ Route::middleware('auth:sanctum')->group(function () {
             ->middleware('check.role:administrador');
         Route::delete('/categorias/{id}', [CategoriaController::class, 'destroy'])
             ->middleware('check.role:administrador');
+        Route::post('/categorias/import/preview', [CategoriaController::class, 'importPreview'])
+            ->middleware('check.role:administrador');
+        Route::post('/categorias/import/confirm', [CategoriaController::class, 'importConfirm'])
+            ->middleware('check.role:administrador');
 
         // PRODUCTOS
         Route::get('/productos', [ProductoController::class, 'index'])
@@ -258,6 +262,8 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('check.role:administrador,empleado');
     Route::post('/kardex/ajuste', [KardexController::class, 'ajusteInventario'])
         ->middleware('check.role:administrador');
+    Route::post('/kardex/ingreso-stock', [KardexController::class, 'ingresoStock'])
+        ->middleware('check.role:administrador,empleado');
     Route::get('/kardex/{productoId}', [KardexController::class, 'show'])
         ->middleware('check.role:administrador,empleado');
     Route::get('/kardex/{productoId}/lotes', [KardexController::class, 'lotes'])
