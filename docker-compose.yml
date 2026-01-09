@@ -9,6 +9,8 @@ services:
       - ./frontend:/app
       - /app/node_modules
     command: npm run dev -- --host
+    environment:
+    - CHOKIDAR_USEPOLLING=true
     depends_on:
       - backend
 
@@ -27,3 +29,61 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./backend/scripts/init-db-primary.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./backend/scripts/configure-replication.sh:/docker-entrypoint-initdb.d/02-configure-replication.sh
+    command: 
+      - "postgres"
+      - "-c"
+      - "wal_level=replica"
+      - "-c"
+      - "max_wal_senders=3"
+      - "-c"
+      - "max_replication_slots=3"
+      - "-c"
+      - "hot_standby=on"
+
+  db-replica:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: DBgrupoC
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGUSER: postgres
+      PGPASSWORD: replicator123
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_replica_data:/var/lib/postgresql/data
+    depends_on:
+      - db
+    user: postgres
+    entrypoint: []
+    command:
+      - /bin/bash
+      - -c
+      - |
+        set -e
+        echo "Esperando BD primaria..."
+        until pg_isready -h db -p 5432; do
+          sleep 1
+        done
+        
+        if [ ! -f "$${PGDATA}/PG_VERSION" ]; then
+          echo "Inicializando replicación..."
+          rm -rf "$${PGDATA}"/*
+          pg_basebackup -h db -D "$${PGDATA}" -U replicator -v -P -X stream -S replica_slot
+          chmod 0700 "$${PGDATA}"
+          touch "$${PGDATA}/standby.signal"
+          echo "primary_conninfo = 'host=db port=5432 user=replicator password=replicator123'" >> "$${PGDATA}/postgresql.auto.conf"
+          echo "primary_slot_name = 'replica_slot'" >> "$${PGDATA}/postgresql.auto.conf"
+          echo "Replicación configurada"
+        fi
+        
+        chmod 0700 "$${PGDATA}"
+        exec postgres -c hot_standby=on -c wal_receiver_status_interval=10s
+
+volumes:
+  db_data:
+  db_replica_data:

@@ -36,8 +36,23 @@ class FacturaSeeder extends Seeder
             $sucursal = $sucursales->first();
             $total = 0;
 
+            // Generar clave de acceso válida (49 dígitos)
+            $fechaEmision = now()->subDays(rand(0, 10))->format('dmY');
+            $tipoComprobante = '01'; // Factura
+            $rucEmisor = '9999999999001'; // RUC de prueba
+            $ambiente = '1'; // 1 = Pruebas
+            $serie = '001001'; // Establecimiento y punto de emisión
+            $secuencial = str_pad($i, 9, '0', STR_PAD_LEFT);
+            $codigoNumerico = str_pad(rand(0, 99999999), 8, '0', STR_PAD_LEFT);
+            $tipoEmision = '1'; // Normal
+            
+            // Construir clave de acceso: fecha(8) + tipo(2) + ruc(13) + ambiente(1) + serie(6) + secuencial(9) + codigo(8) + tipo_emision(1) + digito_verificador(1)
+            $claveAccesoSinVerificador = $fechaEmision . $tipoComprobante . $rucEmisor . $ambiente . $serie . $secuencial . $codigoNumerico . $tipoEmision;
+            $digitoVerificador = $this->calcularDigitoVerificador($claveAccesoSinVerificador);
+            $claveAcceso = $claveAccesoSinVerificador . $digitoVerificador;
+
             $factura = Factura::create([
-                'clave_acceso' => str_pad($i, 49, '0', STR_PAD_LEFT),
+                'clave_acceso' => $claveAcceso,
                 'numero_factura' => str_pad($i, 9, '0', STR_PAD_LEFT),
                 'numero_establecimiento' => '001',
                 'punto_emision' => '001',
@@ -107,5 +122,23 @@ class FacturaSeeder extends Seeder
         }
 
         $this->command->info('✅ Facturas y detalles creados exitosamente');
+    }
+
+    /**
+     * Calcula el dígito verificador para la clave de acceso ecuatoriana (módulo 11)
+     */
+    private function calcularDigitoVerificador(string $claveAcceso): string
+    {
+        $pesos = [7, 6, 5, 4, 3, 2, 7, 6, 5, 4, 3, 2, 7, 6, 5, 4, 3, 2, 7, 6, 5, 4, 3, 2, 7, 6, 5, 4, 3, 2, 7, 6, 5, 4, 3, 2, 7, 6, 5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+        $suma = 0;
+        
+        for ($i = 0; $i < strlen($claveAcceso); $i++) {
+            $suma += (int)$claveAcceso[$i] * $pesos[$i];
+        }
+        
+        $modulo = $suma % 11;
+        $digito = 11 - $modulo;
+        
+        return ($digito === 11) ? '0' : (($digito === 10) ? '1' : (string)$digito);
     }
 }
