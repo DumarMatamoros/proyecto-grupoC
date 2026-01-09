@@ -13,16 +13,30 @@ use Illuminate\Support\Facades\DB;
 class ProductoController extends Controller
 {
     // ============================================================
-    // LISTAR PRODUCTOS CON CATEGORÍA
+    // LISTAR PRODUCTOS CON CATEGORÍA Y LOTES
     // ============================================================
     public function index()
     {
-        return response()->json(
-            Producto::with('categoria')
-                ->orderBy('producto_id', 'DESC')
-                ->get(),
-            200
-        );
+        $productos = Producto::with(['categoria', 'proveedorPrincipal', 'lotes' => function($query) {
+            $query->where('estado', 'activo')
+                  ->where('cantidad_disponible', '>', 0)
+                  ->orderBy('fecha_vencimiento', 'asc');
+        }])->orderBy('producto_id', 'DESC')->get();
+
+        // Agregar información de próximo vencimiento
+        $productos->transform(function($producto) {
+            $loteProximo = $producto->lotes->whereNotNull('fecha_vencimiento')->first();
+            $producto->proximo_vencimiento = $loteProximo?->fecha_vencimiento;
+            $producto->lote_proximo = $loteProximo?->numero_lote;
+            
+            // Fecha del último ingreso
+            $ultimoLote = $producto->lotes->sortByDesc('fecha_ingreso')->first();
+            $producto->ultimo_ingreso = $ultimoLote?->fecha_ingreso;
+            
+            return $producto;
+        });
+
+        return response()->json($productos, 200);
     }
 
     // ============================================================
@@ -45,6 +59,16 @@ class ProductoController extends Controller
             'ice_porcentaje'   => 'nullable|numeric|min:0|max:100',
             'imagen'           => 'nullable|image|max:4096',
             'numero_lote'      => 'nullable|string|max:50', // Lote inicial opcional
+            'fecha_vencimiento' => 'nullable|date|after_or_equal:today', // Fecha de caducidad
+            // Campos de identificación y control
+            'unidad_medida'        => 'nullable|in:unidad,kg,lb,caja,paquete,litro,metro,docena',
+            'marca'                => 'nullable|string|max:100',
+            'proveedor_principal_id' => 'nullable|exists:proveedores,proveedor_id',
+            'sku'                  => 'nullable|string|max:50|unique:productos,sku',
+            'ubicacion_bodega'     => 'nullable|string|max:100',
+            // Configuración de precios
+            'margen_ganancia'      => 'nullable|numeric|min:0|max:1000',
+            'modo_precio'          => 'nullable|in:automatico,manual',
         ]);
 
         DB::beginTransaction();
@@ -53,8 +77,13 @@ class ProductoController extends Controller
             $producto = new Producto($request->only([
                 'codigo_principal', 'codigo_barras', 'nombre', 'descripcion',
                 'precio_costo', 'precio_unitario', 'stock_actual', 'categoria_id',
-                'iva_aplica', 'ice_aplica', 'iva_porcentaje', 'ice_porcentaje'
+                'iva_aplica', 'ice_aplica', 'iva_porcentaje', 'ice_porcentaje',
+                'unidad_medida', 'marca', 'proveedor_principal_id', 'sku', 'ubicacion_bodega',
+                'margen_ganancia', 'modo_precio'
             ]));
+
+            // Establecer costo promedio inicial = precio_costo
+            $producto->costo_promedio = $request->precio_costo ?: 0;
 
             // Calcular precio_con_impuestos automáticamente
             $precioBase = (float)$request->precio_unitario;
@@ -78,6 +107,9 @@ class ProductoController extends Controller
                     ? $request->numero_lote 
                     : Lote::generarNumeroLote($producto->producto_id);
 
+                // Fecha de vencimiento (puede ser null)
+                $fechaVencimiento = $request->fecha_vencimiento ?: null;
+
                 $lote = Lote::create([
                     'producto_id' => $producto->producto_id,
                     'numero_lote' => $numeroLote,
@@ -85,14 +117,14 @@ class ProductoController extends Controller
                     'cantidad_disponible' => $stockInicial,
                     'costo_unitario' => (float) ($request->precio_costo ?: $request->precio_unitario),
                     'fecha_ingreso' => now()->toDateString(),
-                    'fecha_vencimiento' => null,
+                    'fecha_vencimiento' => $fechaVencimiento,
                     'estado' => 'activo',
                     'compra_id' => null, // No viene de compra, es inventario inicial
                 ]);
 
                 // Registrar movimiento de inventario inicial
                 MovimientoInventario::create([
-                    'fecha' => now()->toDateString(),
+                    'fecha' => now(),
                     'tipo_movimiento' => 'ENTRADA',
                     'tipo_documento' => 'INVENTARIO_INICIAL',
                     'numero_documento' => $producto->producto_id,
@@ -105,7 +137,9 @@ class ProductoController extends Controller
                     'referencia' => 'Inventario inicial - Producto: ' . $producto->nombre,
                     'producto_id' => $producto->producto_id,
                     'usuario_id' => $request->user()?->usuario_id ?? null,
-                    'observaciones' => 'Creación de producto con stock inicial' . ($request->numero_lote ? ' - Lote: ' . $request->numero_lote : ''),
+                    'observaciones' => 'Creación de producto con stock inicial' . 
+                        ($request->numero_lote ? ' - Lote: ' . $request->numero_lote : '') .
+                        ($fechaVencimiento ? ' - Vence: ' . $fechaVencimiento : ''),
                 ]);
             }
 
@@ -147,13 +181,24 @@ class ProductoController extends Controller
             'iva_porcentaje'   => 'nullable|numeric|min:0|max:100',
             'ice_porcentaje'   => 'nullable|numeric|min:0|max:100',
             'imagen'           => 'nullable|image|max:4096',
+            // Campos de identificación y control
+            'unidad_medida'        => 'nullable|in:unidad,kg,lb,caja,paquete,litro,metro,docena',
+            'marca'                => 'nullable|string|max:100',
+            'proveedor_principal_id' => 'nullable|exists:proveedores,proveedor_id',
+            'sku'                  => "nullable|string|max:50|unique:productos,sku,{$id},producto_id",
+            'ubicacion_bodega'     => 'nullable|string|max:100',
+            // Configuración de precios
+            'margen_ganancia'      => 'nullable|numeric|min:0|max:1000',
+            'modo_precio'          => 'nullable|in:automatico,manual',
         ]);
 
         // Actualizar campos
         $producto->fill($request->only([
             'codigo_principal', 'codigo_barras', 'nombre', 'descripcion',
             'precio_costo', 'precio_unitario', 'stock_actual', 'categoria_id',
-            'iva_aplica', 'ice_aplica', 'iva_porcentaje', 'ice_porcentaje'
+            'iva_aplica', 'ice_aplica', 'iva_porcentaje', 'ice_porcentaje',
+            'unidad_medida', 'marca', 'proveedor_principal_id', 'sku', 'ubicacion_bodega',
+            'margen_ganancia', 'modo_precio'
         ]));
 
         // Calcular precio_con_impuestos automáticamente
@@ -223,19 +268,48 @@ class ProductoController extends Controller
             // Verificar si tiene facturas o compras asociadas
             $tieneFacturas = \App\Models\DetalleFactura::where('producto_id', $id)->exists();
             $tieneCompras = \App\Models\DetalleCompra::where('producto_id', $id)->exists();
+            $tieneEgresos = \App\Models\DetalleEgreso::where('producto_id', $id)->exists();
 
-            if (($tieneFacturas || $tieneCompras) && !$forzar) {
+            if (($tieneFacturas || $tieneCompras || $tieneEgresos) && !$forzar) {
                 return response()->json([
                     "success" => false,
-                    "message" => "No se puede eliminar el producto porque tiene ventas o compras registradas. Considere desactivarlo en su lugar.",
+                    "message" => "No se puede eliminar el producto porque tiene ventas, compras o egresos registrados. Considere desactivarlo en su lugar.",
                     "tiene_relaciones" => true
                 ], 422);
             }
 
             // Si forzar está activo, eliminar las relaciones primero
             if ($forzar) {
+                // Eliminar detalles de factura
                 \App\Models\DetalleFactura::where('producto_id', $id)->delete();
+
+                // Eliminar detalles de compra y compras vacías
+                $comprasAfectadas = \App\Models\DetalleCompra::where('producto_id', $id)
+                    ->pluck('compra_id')
+                    ->unique();
                 \App\Models\DetalleCompra::where('producto_id', $id)->delete();
+                
+                // Eliminar compras que quedaron sin detalles
+                foreach ($comprasAfectadas as $compraId) {
+                    $tieneOtrosDetalles = \App\Models\DetalleCompra::where('compra_id', $compraId)->exists();
+                    if (!$tieneOtrosDetalles) {
+                        \App\Models\Compra::where('compra_id', $compraId)->delete();
+                    }
+                }
+
+                // Eliminar detalles de egreso y egresos vacíos
+                $egresosAfectados = \App\Models\DetalleEgreso::where('producto_id', $id)
+                    ->pluck('egreso_id')
+                    ->unique();
+                \App\Models\DetalleEgreso::where('producto_id', $id)->delete();
+                
+                // Eliminar egresos que quedaron sin detalles
+                foreach ($egresosAfectados as $egresoId) {
+                    $tieneOtrosDetalles = \App\Models\DetalleEgreso::where('egreso_id', $egresoId)->exists();
+                    if (!$tieneOtrosDetalles) {
+                        \App\Models\Egreso::where('egreso_id', $egresoId)->delete();
+                    }
+                }
             }
 
             // Eliminar movimientos de inventario asociados
@@ -255,7 +329,7 @@ class ProductoController extends Controller
 
             return response()->json([
                 "success" => true,
-                "message" => "Producto eliminado correctamente"
+                "message" => "Producto eliminado correctamente junto con sus registros de compras y egresos"
             ], 200);
 
         } catch (\Exception $e) {
@@ -338,6 +412,10 @@ class ProductoController extends Controller
                 'categoria_nombre' => $row['categoria_nombre'] ?? ($row['categoria'] ?? null),
                 'iva_aplica' => isset($row['iva_aplica']) ? (int)self::normalizeBool($row['iva_aplica']) : 0,
                 'ice_aplica' => isset($row['ice_aplica']) ? (int)self::normalizeBool($row['ice_aplica']) : 0,
+                'numero_lote' => $row['numero_lote'] ?? null,
+                'fecha_vencimiento' => $row['fecha_vencimiento'] ?? null,
+                'margen_ganancia' => $row['margen_ganancia'] ?? null,
+                'modo_precio' => $row['modo_precio'] ?? null,
                 'imagen_url' => $row['imagen_url'] ?? null,
                 'linea' => $line + 1,
             ];
@@ -384,6 +462,14 @@ class ProductoController extends Controller
                     $stockActual = (int)($row['stock_actual'] ?? 0);
                     $numeroLote = $row['numero_lote'] ?? null;
 
+                    // Procesar margen y modo de precio
+                    $margenGanancia = isset($row['margen_ganancia']) && $row['margen_ganancia'] !== '' 
+                        ? (float)$row['margen_ganancia'] 
+                        : 30.00;
+                    $modoPrecio = isset($row['modo_precio']) && in_array($row['modo_precio'], ['automatico', 'manual']) 
+                        ? $row['modo_precio'] 
+                        : 'automatico';
+
                     $payload = [
                         'codigo_principal' => $row['codigo_principal'] ?? null,
                         'codigo_barras' => $row['codigo_barras'] ?? null,
@@ -395,6 +481,8 @@ class ProductoController extends Controller
                         'categoria_id' => $categoriaId,
                         'iva_aplica' => isset($row['iva_aplica']) ? (int)$row['iva_aplica'] : 0,
                         'ice_aplica' => isset($row['ice_aplica']) ? (int)$row['ice_aplica'] : 0,
+                        'margen_ganancia' => $margenGanancia,
+                        'modo_precio' => $modoPrecio,
                     ];
 
                     // Validación simple
@@ -425,6 +513,16 @@ class ProductoController extends Controller
                             ? $numeroLote 
                             : Lote::generarNumeroLote($producto->producto_id);
 
+                        // Procesar fecha de vencimiento si viene en el CSV
+                        $fechaVencimiento = null;
+                        if (!empty($row['fecha_vencimiento'])) {
+                            try {
+                                $fechaVencimiento = \Carbon\Carbon::parse($row['fecha_vencimiento'])->toDateString();
+                            } catch (\Exception $e) {
+                                $fechaVencimiento = null;
+                            }
+                        }
+
                         $lote = Lote::create([
                             'producto_id' => $producto->producto_id,
                             'numero_lote' => $loteNumero,
@@ -432,14 +530,14 @@ class ProductoController extends Controller
                             'cantidad_disponible' => $stockActual,
                             'costo_unitario' => (float) ($payload['precio_costo'] ?: $payload['precio_unitario']),
                             'fecha_ingreso' => now()->toDateString(),
-                            'fecha_vencimiento' => null,
+                            'fecha_vencimiento' => $fechaVencimiento,
                             'estado' => 'activo',
                             'compra_id' => null,
                         ]);
 
                         // Registrar movimiento de inventario inicial
                         MovimientoInventario::create([
-                            'fecha' => now()->toDateString(),
+                            'fecha' => now(),
                             'tipo_movimiento' => 'ENTRADA',
                             'tipo_documento' => 'IMPORTACION_CSV',
                             'numero_documento' => $producto->producto_id,

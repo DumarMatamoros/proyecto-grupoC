@@ -176,11 +176,19 @@ class EgresoController extends Controller
 
                 // Registrar movimiento de inventario
                 MovimientoInventario::create([
-                    'fecha' => $request->fecha,
-                    'tipo_movimiento' => 'salida',
+                    'fecha' => now(),
+                    'tipo_movimiento' => 'SALIDA',
+                    'tipo_documento' => 'EGRESO',
+                    'numero_documento' => $egreso->egreso_id,
                     'cantidad' => $detalle['cantidad'],
+                    'cantidad_entrada' => 0,
+                    'cantidad_salida' => $detalle['cantidad'],
+                    'stock_resultante' => $producto->stock_actual,
+                    'costo_unitario' => $precioUnitario,
                     'referencia' => "Egreso #{$egreso->egreso_id} - " . Egreso::MOTIVOS[$request->motivo],
                     'producto_id' => $detalle['producto_id'],
+                    'usuario_id' => $egreso->usuario_id,
+                    'observaciones' => $detalle['motivo_detalle'] ?? null,
                 ]);
 
                 $totalUnidades += $detalle['cantidad'];

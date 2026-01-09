@@ -57,9 +57,15 @@ class LoteController extends Controller
     {
         $producto = Producto::findOrFail($productoId);
 
-        $lotes = Lote::where('producto_id', $productoId)
+        $lotes = Lote::with(['compra.proveedor'])
+            ->where('producto_id', $productoId)
             ->orderBy('fecha_ingreso', 'desc')
-            ->get();
+            ->get()
+            ->map(function($lote) {
+                $lote->proveedor_nombre = $lote->compra?->proveedor?->nombre ?? 'Ingreso Manual';
+                $lote->numero_factura = $lote->compra?->numero_factura_proveedor ?? '-';
+                return $lote;
+            });
 
         return response()->json([
             'producto' => [
@@ -163,19 +169,23 @@ class LoteController extends Controller
             DB::beginTransaction();
 
             $cantidadAfectada = $lote->cantidad_disponible;
+            $stockActual = $lote->producto->stock_actual;
 
             // Registrar movimiento
             MovimientoInventario::create([
                 'producto_id' => $lote->producto_id,
                 'lote_id' => $lote->lote_id,
-                'tipo_movimiento' => 'egreso',
-                'motivo' => 'vencimiento',
+                'tipo_movimiento' => 'SALIDA',
+                'tipo_documento' => 'VENCIMIENTO',
+                'numero_documento' => $lote->lote_id,
                 'cantidad' => $cantidadAfectada,
-                'stock_anterior' => $lote->producto->stock_actual,
-                'stock_nuevo' => $lote->producto->stock_actual - $cantidadAfectada,
+                'cantidad_entrada' => 0,
+                'cantidad_salida' => $cantidadAfectada,
+                'stock_resultante' => $stockActual - $cantidadAfectada,
                 'costo_unitario' => $lote->costo_unitario,
                 'referencia' => "Vencimiento Lote {$lote->numero_lote}",
                 'fecha' => now(),
+                'observaciones' => 'Producto vencido',
             ]);
 
             // Actualizar lote
@@ -240,11 +250,13 @@ class LoteController extends Controller
             MovimientoInventario::create([
                 'producto_id' => $request->producto_id,
                 'lote_id' => $lote->lote_id,
-                'tipo_movimiento' => 'ingreso',
-                'motivo' => 'ingreso_manual',
+                'tipo_movimiento' => 'ENTRADA',
+                'tipo_documento' => 'INGRESO_LOTE',
+                'numero_documento' => $lote->lote_id,
                 'cantidad' => $request->cantidad,
-                'stock_anterior' => $producto->stock_actual,
-                'stock_nuevo' => $producto->stock_actual + $request->cantidad,
+                'cantidad_entrada' => $request->cantidad,
+                'cantidad_salida' => 0,
+                'stock_resultante' => $producto->stock_actual + $request->cantidad,
                 'costo_unitario' => $request->costo_unitario,
                 'referencia' => "Ingreso manual - Lote {$numeroLote}",
                 'fecha' => now(),

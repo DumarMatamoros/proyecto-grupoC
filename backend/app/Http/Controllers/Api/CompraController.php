@@ -137,7 +137,7 @@ class CompraController extends Controller
 
                 // ========== REGISTRAR MOVIMIENTO EN KARDEX ==========
                 MovimientoInventario::create([
-                    'fecha' => $request->fecha,
+                    'fecha' => now(),
                     'tipo_movimiento' => 'ENTRADA',
                     'tipo_documento' => 'COMPRA',
                     'numero_documento' => $compra->compra_id,

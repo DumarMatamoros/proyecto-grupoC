@@ -267,7 +267,7 @@ class FacturaController extends Controller
 
                     // Registrar movimiento de inventario para este lote
                     MovimientoInventario::create([
-                        'fecha' => $fechaEmision,
+                        'fecha' => now(),
                         'tipo_movimiento' => 'SALIDA',
                         'tipo_documento' => 'FACTURA',
                         'numero_documento' => $factura->factura_id,
@@ -296,7 +296,7 @@ class FacturaController extends Controller
                     $producto->save();
 
                     MovimientoInventario::create([
-                        'fecha' => $fechaEmision,
+                        'fecha' => now(),
                         'tipo_movimiento' => 'SALIDA',
                         'tipo_documento' => 'FACTURA',
                         'numero_documento' => $factura->factura_id,
@@ -381,7 +381,7 @@ class FacturaController extends Controller
 
                     // Registrar movimiento de inventario KARDEX
                     MovimientoInventario::create([
-                        'fecha' => now()->format('Y-m-d'),
+                        'fecha' => now(),
                         'tipo_movimiento' => 'ENTRADA',
                         'tipo_documento' => 'ANULACION_FACTURA',
                         'numero_documento' => $factura->factura_id,

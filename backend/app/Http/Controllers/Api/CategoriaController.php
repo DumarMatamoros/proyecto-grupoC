@@ -24,7 +24,10 @@ class CategoriaController extends Controller
             'descripcion' => 'nullable|string'
         ]);
 
-        Categoria::create($request->all());
+        $data = $request->all();
+        $data['estado'] = 'activo'; // Asegurar estado activo por defecto
+
+        Categoria::create($data);
 
         return response()->json([
             "message" => "Categoría creada correctamente"
@@ -68,6 +71,139 @@ class CategoriaController extends Controller
             return response()->json([
                 "success" => false,
                 "message" => "Error al cambiar estado: " . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // ============================================================
+    // IMPORTACIÓN MASIVA - PREVISUALIZAR (CSV)
+    // ============================================================
+    public function importPreview(Request $request)
+    {
+        $request->validate([
+            'archivo' => 'required|file|mimes:csv,txt|max:10240',
+        ]);
+
+        $file = $request->file('archivo');
+        $handle = fopen($file->getRealPath(), 'r');
+        if (!$handle) {
+            return response()->json(["message" => "No se pudo leer el archivo"], 422);
+        }
+
+        // Leer encabezados
+        $headers = fgetcsv($handle, 0, ',', '"');
+        if (!$headers) {
+            return response()->json(["message" => "El CSV no contiene encabezados"], 422);
+        }
+
+        // Normalizar encabezados
+        $normalize = function ($h) {
+            $h = preg_replace('/^\xEF\xBB\xBF/', '', $h); // quitar BOM UTF-8
+            $h = strtolower(trim($h));
+            $h = str_replace([' ', '-'], '_', $h);
+            $h = strtr($h, [
+                'á' => 'a','é' => 'e','í' => 'i','ó' => 'o','ú' => 'u','ñ' => 'n',
+            ]);
+            return $h;
+        };
+        $headers = array_map($normalize, $headers);
+
+        $rows = [];
+        $line = 1;
+        while (($data = fgetcsv($handle, 0, ',', '"')) !== false && count($rows) < 1000) {
+            // Ignorar líneas vacías
+            if ($data === null || (count($data) === 1 && trim((string)$data[0]) === '')) {
+                continue;
+            }
+
+            // Asegurar mismas longitudes
+            if (count($data) < count($headers)) {
+                $data = array_merge($data, array_fill(0, count($headers) - count($data), null));
+            } elseif (count($data) > count($headers)) {
+                $data = array_slice($data, 0, count($headers));
+            }
+
+            $data = array_map(function($v){ return is_string($v) ? trim($v) : $v; }, $data);
+            $row = array_combine($headers, $data);
+
+            $rows[] = [
+                'nombre' => $row['nombre'] ?? null,
+                'descripcion' => $row['descripcion'] ?? null,
+                'linea' => $line + 1,
+            ];
+            $line++;
+        }
+        fclose($handle);
+
+        return response()->json([
+            'headers' => $headers,
+            'preview' => $rows,
+            'count' => count($rows),
+        ], 200);
+    }
+
+    // ============================================================
+    // IMPORTACIÓN MASIVA - CONFIRMAR (CSV)
+    // ============================================================
+    public function importConfirm(Request $request)
+    {
+        $request->validate([
+            'rows' => 'required|array',
+        ]);
+
+        $created = 0;
+        $updated = 0;
+        $errors = [];
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($request->input('rows') as $idx => $row) {
+                $nombre = $row['nombre'] ?? null;
+                $descripcion = $row['descripcion'] ?? null;
+
+                if (empty($nombre)) {
+                    $errors[] = [
+                        'linea' => $row['linea'] ?? $idx + 1,
+                        'error' => 'El nombre es obligatorio'
+                    ];
+                    continue;
+                }
+
+                // Buscar si existe por nombre
+                $categoria = Categoria::where('nombre', $nombre)->first();
+
+                if ($categoria) {
+                    // Actualizar
+                    $categoria->update([
+                        'descripcion' => $descripcion,
+                    ]);
+                    $updated++;
+                } else {
+                    // Crear nueva
+                    Categoria::create([
+                        'nombre' => $nombre,
+                        'descripcion' => $descripcion,
+                        'estado' => 'activo',
+                    ]);
+                    $created++;
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'created' => $created,
+                'updated' => $updated,
+                'errors' => $errors,
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error en la importación: ' . $e->getMessage(),
             ], 500);
         }
     }

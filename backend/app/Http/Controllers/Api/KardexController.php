@@ -68,7 +68,10 @@ class KardexController extends Controller
                 'stock_minimo' => $producto->stock_minimo ?? 10,
                 'stock_maximo' => $producto->stock_maximo ?? 1000,
                 'precio_costo' => $producto->precio_costo,
+                'costo_promedio' => $producto->costo_promedio,
                 'precio_unitario' => $producto->precio_unitario,
+                'margen_ganancia' => $producto->margen_ganancia ?? 30,
+                'modo_precio' => $producto->modo_precio ?? 'automatico',
                 'total_entradas' => $totalEntradas,
                 'total_salidas' => $totalSalidas,
                 'total_movimientos' => $movimientos->count(),
@@ -96,10 +99,16 @@ class KardexController extends Controller
 
         // Filtrar por fechas
         if ($request->filled('fecha_inicio')) {
-            $query->whereDate('created_at', '>=', $request->fecha_inicio);
+            $query->where(function($q) use ($request) {
+                $q->whereDate('fecha', '>=', $request->fecha_inicio)
+                  ->orWhereDate('created_at', '>=', $request->fecha_inicio);
+            });
         }
         if ($request->filled('fecha_fin')) {
-            $query->whereDate('created_at', '<=', $request->fecha_fin);
+            $query->where(function($q) use ($request) {
+                $q->whereDate('fecha', '<=', $request->fecha_fin)
+                  ->orWhereDate('created_at', '<=', $request->fecha_fin);
+            });
         }
 
         // Filtrar por tipo de movimiento
@@ -118,10 +127,13 @@ class KardexController extends Controller
             $salida = $mov->cantidad_salida ?? 0;
             $saldo = $saldo + $entrada - $salida;
 
+            // Usar fecha del movimiento si existe, sino created_at
+            $fechaMov = $mov->fecha ?? $mov->created_at;
+
             $kardex[] = [
                 'movimiento_id' => $mov->movimiento_id,
-                'fecha' => $mov->created_at->format('Y-m-d H:i:s'),
-                'tipo_movimiento' => $mov->tipo_movimiento,
+                'fecha' => $fechaMov ? (is_string($fechaMov) ? $fechaMov : $fechaMov->format('Y-m-d H:i:s')) : null,
+                'tipo_movimiento' => strtoupper($mov->tipo_movimiento),
                 'tipo_documento' => $mov->tipo_documento,
                 'numero_documento' => $mov->numero_documento,
                 'referencia' => $mov->referencia,
@@ -329,6 +341,125 @@ class KardexController extends Controller
             DB::rollBack();
             return response()->json([
                 'message' => 'Error al registrar el ajuste',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Ingreso de Stock con cálculo de costo promedio y actualización de precio
+     */
+    public function ingresoStock(Request $request)
+    {
+        $request->validate([
+            'producto_id' => 'required|exists:productos,producto_id',
+            'cantidad' => 'required|integer|min:1',
+            'costo_unitario' => 'required|numeric|min:0',
+            'numero_lote' => 'nullable|string|max:50',
+            'fecha_vencimiento' => 'nullable|date|after_or_equal:today',
+            'aplicar_nuevo_precio' => 'nullable|boolean',
+            'costo_promedio_nuevo' => 'nullable|numeric|min:0',
+            'precio_sugerido_nuevo' => 'nullable|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $producto = Producto::findOrFail($request->producto_id);
+            $usuario = $request->user();
+            $cantidad = (int) $request->cantidad;
+            $costoUnitario = (float) $request->costo_unitario;
+
+            // ========== CALCULAR COSTO PROMEDIO PONDERADO ==========
+            $stockActual = $producto->stock_actual;
+            $costoPromedioActual = (float) ($producto->costo_promedio ?? $producto->precio_costo ?? 0);
+            
+            $valorInventarioActual = $stockActual * $costoPromedioActual;
+            $valorNuevoIngreso = $cantidad * $costoUnitario;
+            $stockTotal = $stockActual + $cantidad;
+            
+            $costoPromedioNuevo = $stockTotal > 0 
+                ? ($valorInventarioActual + $valorNuevoIngreso) / $stockTotal 
+                : $costoUnitario;
+
+            // ========== CREAR LOTE ==========
+            $numeroLote = $request->numero_lote ?: Lote::generarNumeroLote($producto->producto_id);
+            
+            $lote = Lote::create([
+                'producto_id' => $producto->producto_id,
+                'numero_lote' => $numeroLote,
+                'cantidad_inicial' => $cantidad,
+                'cantidad_disponible' => $cantidad,
+                'costo_unitario' => $costoUnitario,
+                'fecha_ingreso' => now()->toDateString(),
+                'fecha_vencimiento' => $request->fecha_vencimiento,
+                'estado' => 'activo',
+                'compra_id' => null,
+            ]);
+
+            // ========== ACTUALIZAR PRODUCTO ==========
+            $producto->stock_actual = $stockTotal;
+            $producto->costo_promedio = $costoPromedioNuevo;
+            $producto->precio_costo = $costoUnitario; // Último costo de compra
+
+            // Si modo automático y se eligió aplicar nuevo precio
+            if ($producto->modo_precio === 'automatico' && $request->aplicar_nuevo_precio) {
+                $margen = (float) ($producto->margen_ganancia ?? 30);
+                $nuevoPrecio = $costoPromedioNuevo * (1 + $margen / 100);
+                $producto->precio_unitario = round($nuevoPrecio, 2);
+                
+                // Recalcular precio con impuestos
+                $ivaPorcentaje = $producto->iva_aplica ? ($producto->iva_porcentaje ?? 15) : 0;
+                $icePorcentaje = $producto->ice_aplica ? ($producto->ice_porcentaje ?? 0) : 0;
+                $producto->precio_con_impuestos = round($producto->precio_unitario * (1 + ($ivaPorcentaje + $icePorcentaje) / 100), 2);
+            }
+
+            $producto->save();
+
+            // ========== REGISTRAR MOVIMIENTO ==========
+            $movimiento = MovimientoInventario::create([
+                'producto_id' => $producto->producto_id,
+                'lote_id' => $lote->lote_id,
+                'fecha' => now(),
+                'tipo_movimiento' => 'ENTRADA',
+                'tipo_documento' => 'INGRESO_STOCK',
+                'numero_documento' => 'ING-' . now()->format('YmdHis'),
+                'cantidad' => $cantidad,
+                'cantidad_entrada' => $cantidad,
+                'cantidad_salida' => 0,
+                'stock_resultante' => $stockTotal,
+                'costo_unitario' => $costoUnitario,
+                'referencia' => 'Ingreso de stock - Lote: ' . $numeroLote,
+                'observaciones' => $request->aplicar_nuevo_precio 
+                    ? 'Precio actualizado automáticamente a $' . number_format($producto->precio_unitario, 2)
+                    : 'Precio mantiene valor anterior',
+                'usuario_id' => $usuario?->usuario_id,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ingreso de stock registrado correctamente',
+                'data' => [
+                    'lote' => $lote,
+                    'movimiento' => $movimiento,
+                    'producto' => [
+                        'producto_id' => $producto->producto_id,
+                        'nombre' => $producto->nombre,
+                        'stock_actual' => $producto->stock_actual,
+                        'costo_promedio' => $producto->costo_promedio,
+                        'precio_unitario' => $producto->precio_unitario,
+                        'precio_con_impuestos' => $producto->precio_con_impuestos,
+                    ],
+                ],
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al registrar el ingreso de stock',
                 'error' => $e->getMessage(),
             ], 500);
         }
