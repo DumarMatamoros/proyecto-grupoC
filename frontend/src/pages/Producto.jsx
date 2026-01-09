@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { FaBox, FaPlus, FaEdit, FaTrash, FaTimes, FaFileImport, FaSlidersH, FaBan, FaCheck, FaExclamationTriangle, FaCamera, FaCloudUploadAlt } from "react-icons/fa";
+import { FaBox, FaPlus, FaEdit, FaTrash, FaTimes, FaFileImport, FaSlidersH, FaBan, FaCheck, FaExclamationTriangle, FaCamera, FaCloudUploadAlt, FaDownload, FaFileExcel } from "react-icons/fa";
+import * as XLSX from "xlsx";
 import api from "../services/api";
 import { getErrorMessage } from "../utils/errorTranslator";
 import { PRODUCT_LIMITS } from "../utils/validationLimits";
@@ -15,6 +16,7 @@ export default function InventoryPage() {
   const toast = useToast();
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -41,7 +43,15 @@ export default function InventoryPage() {
     precio_final: true,
     iva: true,
     ice: true,
+    vencimiento: true,
+    ultimo_ingreso: false,
     estado: true,
+    // Nuevos campos de control (ocultos por defecto)
+    sku: false,
+    marca: false,
+    unidad_medida: false,
+    proveedor: false,
+    ubicacion: false,
   });
 
   const [search, setSearch] = useState("");
@@ -66,6 +76,16 @@ export default function InventoryPage() {
     iva_porcentaje: "15.00",
     ice_porcentaje: "0.00",
     numero_lote: "", // Lote inicial para el stock
+    fecha_vencimiento: "", // Fecha de caducidad del lote
+    // Campos de identificación y control
+    unidad_medida: "unidad",
+    marca: "",
+    proveedor_principal_id: "",
+    sku: "",
+    ubicacion_bodega: "",
+    // Configuración de precios
+    margen_ganancia: "30.00",
+    modo_precio: "automatico",
   });
 
   // ============================
@@ -86,16 +106,38 @@ export default function InventoryPage() {
 
   const cargarCategorias = async () => {
     try {
+      console.log("Llamando a /categorias...");
       const res = await api.get("/categorias");
-      setCategorias(res.data);
+      console.log("Respuesta categorías:", res);
+      console.log("res.data:", res.data);
+      // El backend devuelve directamente un array
+      const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      console.log("Categorías procesadas:", data);
+      setCategorias(data);
     } catch (error) {
       console.error("Error cargando categorías:", error);
+      console.error("Error response:", error.response);
+      toast.error("Error al cargar categorías");
+      setCategorias([]);
+    }
+  };
+
+  const cargarProveedores = async () => {
+    try {
+      const res = await api.get("/proveedores?per_page=1000");
+      // La API devuelve { success: true, data: { data: [...] } } con paginación
+      const data = res.data?.data?.data || res.data?.data || res.data || [];
+      setProveedores(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error cargando proveedores:", error);
+      setProveedores([]);
     }
   };
 
   useEffect(() => {
     cargarProductos();
     cargarCategorias();
+    cargarProveedores();
   }, []);
 
   // ============================
@@ -116,7 +158,28 @@ export default function InventoryPage() {
       return;
     }
 
-    setForm({ ...form, [name]: value });
+    // Lógica especial para modo automático de precios
+    let newForm = { ...form, [name]: value };
+
+    // Si cambia el costo o margen y modo es automático → recalcular precio
+    if ((name === "precio_costo" || name === "margen_ganancia") && form.modo_precio === "automatico") {
+      const costo = parseFloat(name === "precio_costo" ? value : form.precio_costo) || 0;
+      const margen = parseFloat(name === "margen_ganancia" ? value : form.margen_ganancia) || 0;
+      if (costo > 0) {
+        newForm.precio_unitario = (costo * (1 + margen / 100)).toFixed(2);
+      }
+    }
+
+    // Si cambia a modo automático → recalcular precio inmediatamente
+    if (name === "modo_precio" && value === "automatico") {
+      const costo = parseFloat(form.precio_costo) || 0;
+      const margen = parseFloat(form.margen_ganancia) || 0;
+      if (costo > 0) {
+        newForm.precio_unitario = (costo * (1 + margen / 100)).toFixed(2);
+      }
+    }
+
+    setForm(newForm);
   };
 
   // ============================
@@ -156,6 +219,25 @@ export default function InventoryPage() {
     iva_porcentaje: "15.00",
     ice_porcentaje: "0.00",
     numero_lote: "", // Lote inicial para el stock
+    fecha_vencimiento: "", // Fecha de caducidad del lote
+    // Campos de identificación y control
+    unidad_medida: "unidad",
+    marca: "",
+    proveedor_principal_id: "",
+    sku: "",
+    ubicacion_bodega: "",
+    // Configuración de precios
+    margen_ganancia: "30.00",
+    modo_precio: "automatico",
+  };
+
+  // ============================
+  // CÁLCULO DE PRECIO SUGERIDO (basado en costo + margen)
+  // ============================
+  const calcularPrecioSugerido = () => {
+    const costo = parseFloat(form.precio_costo) || 0;
+    const margen = parseFloat(form.margen_ganancia) || 0;
+    return costo > 0 ? (costo * (1 + margen / 100)).toFixed(2) : "0.00";
   };
 
   // ============================
@@ -298,6 +380,155 @@ export default function InventoryPage() {
   };
 
   // ============================
+  // DESCARGAR PLANTILLA EXCEL
+  // ============================
+  const descargarPlantillaExcel = () => {
+    // Definir datos con encabezados amigables y descripción
+    const datosPlantilla = [
+      // Fila de instrucciones
+      ['📋 PLANTILLA DE IMPORTACIÓN DE PRODUCTOS - Complete los datos desde la fila 4'],
+      ['⚠️ NO modificar los encabezados de la fila 3. Los campos marcados con * son obligatorios.'],
+      [], // Fila vacía de separación
+      // Encabezados con nombres amigables
+      [
+        'Código Principal *',
+        'Código de Barras',
+        'Nombre del Producto *',
+        'Descripción',
+        'Precio de Costo ($)',
+        'Precio de Venta ($)',
+        'Stock Inicial',
+        'Categoría',
+        'Aplica IVA (1=Sí, 0=No)',
+        'Aplica ICE (1=Sí, 0=No)',
+        'Número de Lote',
+        'Fecha Vencimiento (AAAA-MM-DD)',
+        'Margen de Ganancia (%)',
+        'Modo de Precio'
+      ],
+      // Fila de ejemplo 1
+      [
+        'PROD001',
+        '7501234567890',
+        'Coca Cola 500ml',
+        'Bebida gaseosa',
+        0.80,
+        1.25,
+        100,
+        'Bebidas',
+        1,
+        0,
+        'LOTE-001',
+        '2027-12-31',
+        30,
+        'automatico'
+      ],
+      // Fila de ejemplo 2
+      [
+        'PROD002',
+        '7509876543210',
+        'Galletas María 200g',
+        'Paquete de galletas',
+        0.50,
+        0.85,
+        50,
+        'Snacks',
+        1,
+        0,
+        'LOTE-002',
+        '2026-06-15',
+        40,
+        'manual'
+      ],
+      // Fila de ejemplo 3 (mínimo requerido)
+      [
+        'PROD003',
+        '',
+        'Producto Básico',
+        '',
+        '',
+        1.00,
+        '',
+        '',
+        1,
+        0,
+        '',
+        '',
+        30,
+        'automatico'
+      ],
+    ];
+
+    // Hoja de instrucciones
+    const instrucciones = [
+      ['📘 GUÍA DE CAMPOS'],
+      [],
+      ['Campo', 'Obligatorio', 'Descripción', 'Ejemplo'],
+      ['Código Principal', 'SÍ', 'Código único del producto', 'PROD001'],
+      ['Código de Barras', 'NO', 'Código de barras EAN/UPC', '7501234567890'],
+      ['Nombre del Producto', 'SÍ', 'Nombre comercial del producto', 'Coca Cola 500ml'],
+      ['Descripción', 'NO', 'Detalle adicional del producto', 'Bebida gaseosa'],
+      ['Precio de Costo', 'NO', 'Costo de adquisición', '0.80'],
+      ['Precio de Venta', 'NO', 'Precio al público', '1.25'],
+      ['Stock Inicial', 'NO', 'Cantidad inicial en inventario', '100'],
+      ['Categoría', 'NO', 'Nombre de la categoría (se crea si no existe)', 'Bebidas'],
+      ['Aplica IVA', 'NO', '1 = Sí aplica IVA, 0 = No aplica', '1'],
+      ['Aplica ICE', 'NO', '1 = Sí aplica ICE, 0 = No aplica', '0'],
+      ['Número de Lote', 'NO', 'Identificador del lote (se genera automático si vacío)', 'LOTE-001'],
+      ['Fecha Vencimiento', 'NO', 'Formato: AAAA-MM-DD', '2027-12-31'],
+      ['Margen de Ganancia', 'NO', 'Porcentaje de ganancia (default: 30)', '30'],
+      ['Modo de Precio', 'NO', '"automatico" = recalcula precio, "manual" = precio fijo', 'automatico'],
+      [],
+      ['💡 CONSEJOS:'],
+      ['• Si el código_principal ya existe, se actualizará el producto'],
+      ['• Si incluyes stock_actual, se creará automáticamente un lote'],
+      ['• Las categorías nuevas se crean automáticamente'],
+      ['• Puedes dejar campos opcionales vacíos'],
+    ];
+
+    // Crear libro de Excel
+    const wb = XLSX.utils.book_new();
+    
+    // Hoja principal de datos
+    const ws = XLSX.utils.aoa_to_sheet(datosPlantilla);
+    
+    // Ajustar anchos de columnas
+    ws['!cols'] = [
+      { wch: 18 }, // Código Principal
+      { wch: 16 }, // Código Barras
+      { wch: 25 }, // Nombre
+      { wch: 25 }, // Descripción
+      { wch: 16 }, // Precio Costo
+      { wch: 16 }, // Precio Venta
+      { wch: 12 }, // Stock
+      { wch: 15 }, // Categoría
+      { wch: 18 }, // IVA
+      { wch: 18 }, // ICE
+      { wch: 15 }, // Lote
+      { wch: 22 }, // Fecha Vencimiento
+      { wch: 18 }, // Margen
+      { wch: 15 }, // Modo
+    ];
+
+    // Hoja de instrucciones
+    const wsInstrucciones = XLSX.utils.aoa_to_sheet(instrucciones);
+    wsInstrucciones['!cols'] = [
+      { wch: 20 },
+      { wch: 12 },
+      { wch: 45 },
+      { wch: 20 },
+    ];
+
+    // Agregar hojas al libro
+    XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+    XLSX.utils.book_append_sheet(wb, wsInstrucciones, 'Instrucciones');
+
+    // Descargar archivo
+    XLSX.writeFile(wb, 'plantilla_productos.xlsx');
+    toast.success('Plantilla Excel descargada correctamente');
+  };
+
+  // ============================
   // EDITAR PRODUCTO
   // ============================
   const abrirEditar = (p) => {
@@ -316,6 +547,15 @@ export default function InventoryPage() {
       iva_porcentaje: p.iva_porcentaje || "15.00",
       ice_porcentaje: p.ice_porcentaje || "0.00",
       imagen: null,
+      // Campos de identificación y control
+      unidad_medida: p.unidad_medida || "unidad",
+      marca: p.marca || "",
+      proveedor_principal_id: p.proveedor_principal_id || "",
+      sku: p.sku || "",
+      ubicacion_bodega: p.ubicacion_bodega || "",
+      // Configuración de precios
+      margen_ganancia: p.margen_ganancia || "30.00",
+      modo_precio: p.modo_precio || "automatico",
     };
     setForm(formData);
     setInitialForm(formData);
@@ -328,6 +568,12 @@ export default function InventoryPage() {
   // CREAR O ACTUALIZAR
   // ============================
   const guardarProducto = async () => {
+        // Validación: Si hay stock inicial, la fecha de vencimiento es obligatoria
+        if (!editing && parseInt(form.stock_actual) > 0 && !form.fecha_vencimiento) {
+          toast.error("La fecha de vencimiento es obligatoria cuando hay stock inicial");
+          return;
+        }
+
         const data = new FormData();
 
         // Agregar cada campo EXCEPTO imagen si está vacía
@@ -641,6 +887,145 @@ export default function InventoryPage() {
       });
     }
 
+    // Columna de próximo vencimiento
+    if (visibleCols.vencimiento) {
+      cols.push({
+        accessorKey: "proximo_vencimiento",
+        header: "Vencimiento",
+        size: 110,
+        minSize: 100,
+        maxSize: 130,
+        truncate: false,
+        cell: ({ row }) => {
+          const fecha = row.original.proximo_vencimiento;
+          const lote = row.original.lote_proximo;
+          if (!fecha) return <span className="text-gray-400 text-xs">Sin fecha</span>;
+          
+          const fechaVenc = new Date(fecha);
+          const hoy = new Date();
+          const diasRestantes = Math.ceil((fechaVenc - hoy) / (1000 * 60 * 60 * 24));
+          
+          let colorClass = "text-green-600 bg-green-50";
+          if (diasRestantes < 0) {
+            colorClass = "text-red-700 bg-red-100 font-bold";
+          } else if (diasRestantes <= 30) {
+            colorClass = "text-orange-600 bg-orange-50";
+          } else if (diasRestantes <= 90) {
+            colorClass = "text-yellow-600 bg-yellow-50";
+          }
+          
+          return (
+            <div className={`px-2 py-1 rounded text-xs ${colorClass}`} title={lote ? `Lote: ${lote}` : ''}>
+              {fechaVenc.toLocaleDateString('es-EC')}
+              {diasRestantes < 0 && <span className="block text-[10px]">¡Vencido!</span>}
+              {diasRestantes >= 0 && diasRestantes <= 30 && <span className="block text-[10px]">{diasRestantes}d</span>}
+            </div>
+          );
+        },
+      });
+    }
+
+    // Columna de último ingreso
+    if (visibleCols.ultimo_ingreso) {
+      cols.push({
+        accessorKey: "ultimo_ingreso",
+        header: "Últ. Ingreso",
+        size: 100,
+        minSize: 90,
+        maxSize: 120,
+        truncate: false,
+        cell: ({ getValue }) => {
+          const fecha = getValue();
+          if (!fecha) return <span className="text-gray-400 text-xs">-</span>;
+          return (
+            <span className="text-xs text-gray-600">
+              {new Date(fecha).toLocaleDateString('es-EC')}
+            </span>
+          );
+        },
+      });
+    }
+
+    // Columna SKU
+    if (visibleCols.sku) {
+      cols.push({
+        accessorKey: "sku",
+        header: "SKU",
+        size: 100,
+        minSize: 80,
+        maxSize: 120,
+        cell: ({ getValue }) => (
+          <span className="font-mono text-xs">{getValue() || "-"}</span>
+        ),
+      });
+    }
+
+    // Columna Marca
+    if (visibleCols.marca) {
+      cols.push({
+        accessorKey: "marca",
+        header: "Marca",
+        size: 100,
+        minSize: 80,
+        maxSize: 130,
+        cell: ({ getValue }) => getValue() || "-",
+      });
+    }
+
+    // Columna Unidad de Medida
+    if (visibleCols.unidad_medida) {
+      cols.push({
+        accessorKey: "unidad_medida",
+        header: "Unidad",
+        size: 80,
+        minSize: 70,
+        maxSize: 100,
+        cell: ({ getValue }) => {
+          const unidad = getValue();
+          const labels = {
+            unidad: "Ud",
+            kg: "Kg",
+            lb: "Lb",
+            caja: "Caja",
+            paquete: "Paq",
+            litro: "Lt",
+            metro: "Mt",
+            docena: "Doc",
+          };
+          return labels[unidad] || unidad || "-";
+        },
+      });
+    }
+
+    // Columna Proveedor Principal
+    if (visibleCols.proveedor) {
+      cols.push({
+        accessorKey: "proveedor_principal",
+        header: "Proveedor",
+        size: 130,
+        minSize: 100,
+        maxSize: 160,
+        cell: ({ row }) => {
+          const prov = row.original.proveedor_principal;
+          return prov ? (prov.razon_social || prov.nombre_comercial) : "-";
+        },
+      });
+    }
+
+    // Columna Ubicación
+    if (visibleCols.ubicacion) {
+      cols.push({
+        accessorKey: "ubicacion_bodega",
+        header: "Ubicación",
+        size: 120,
+        minSize: 100,
+        maxSize: 150,
+        cell: ({ getValue }) => (
+          <span className="text-xs">{getValue() || "-"}</span>
+        ),
+      });
+    }
+
     // Columna de estado
     if (visibleCols.estado) {
       cols.push({
@@ -724,7 +1109,7 @@ export default function InventoryPage() {
       <div className="flex justify-between items-center mb-5">
         <h1 className="text-3xl font-bold flex items-center gap-3">
           <FaBox className="text-blue-600" />
-          Gestión de Productos
+          Catálogo de Productos
         </h1>
       </div>
 
@@ -882,6 +1267,78 @@ export default function InventoryPage() {
                     <label className="flex items-center gap-2 text-sm py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
                       <input
                         type="checkbox"
+                        checked={visibleCols.vencimiento}
+                        onChange={(e) => setVisibleCols({ ...visibleCols, vencimiento: e.target.checked })}
+                        className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                      />
+                      Vencimiento
+                    </label>
+                    <label className="flex items-center gap-2 text-sm py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
+                      <input
+                        type="checkbox"
+                        checked={visibleCols.ultimo_ingreso}
+                        onChange={(e) => setVisibleCols({ ...visibleCols, ultimo_ingreso: e.target.checked })}
+                        className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                      />
+                      Último Ingreso
+                    </label>
+                    
+                    {/* Separador - Campos de Control */}
+                    <div className="border-t border-gray-200 my-2 pt-2">
+                      <p className="text-xs text-gray-400 mb-2">📦 Control</p>
+                    </div>
+                    
+                    <label className="flex items-center gap-2 text-sm py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
+                      <input
+                        type="checkbox"
+                        checked={visibleCols.sku}
+                        onChange={(e) => setVisibleCols({ ...visibleCols, sku: e.target.checked })}
+                        className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      SKU
+                    </label>
+                    <label className="flex items-center gap-2 text-sm py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
+                      <input
+                        type="checkbox"
+                        checked={visibleCols.marca}
+                        onChange={(e) => setVisibleCols({ ...visibleCols, marca: e.target.checked })}
+                        className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      Marca
+                    </label>
+                    <label className="flex items-center gap-2 text-sm py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
+                      <input
+                        type="checkbox"
+                        checked={visibleCols.unidad_medida}
+                        onChange={(e) => setVisibleCols({ ...visibleCols, unidad_medida: e.target.checked })}
+                        className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      Unidad de Medida
+                    </label>
+                    <label className="flex items-center gap-2 text-sm py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
+                      <input
+                        type="checkbox"
+                        checked={visibleCols.proveedor}
+                        onChange={(e) => setVisibleCols({ ...visibleCols, proveedor: e.target.checked })}
+                        className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      Proveedor Principal
+                    </label>
+                    <label className="flex items-center gap-2 text-sm py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
+                      <input
+                        type="checkbox"
+                        checked={visibleCols.ubicacion}
+                        onChange={(e) => setVisibleCols({ ...visibleCols, ubicacion: e.target.checked })}
+                        className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      Ubicación Bodega
+                    </label>
+                    
+                    <div className="border-t border-gray-200 my-2 pt-2"></div>
+                    
+                    <label className="flex items-center gap-2 text-sm py-1 cursor-pointer hover:bg-gray-50 px-2 rounded">
+                      <input
+                        type="checkbox"
                         checked={visibleCols.estado}
                         onChange={(e) => setVisibleCols({ ...visibleCols, estado: e.target.checked })}
                         className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -1032,7 +1489,7 @@ export default function InventoryPage() {
               <FaTimes className="text-base sm:text-lg" />
             </button>
 
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 lg:mb-8 pr-8">Importación de Productos (CSV)</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 lg:mb-8 pr-8">Importación de Productos (CSV/Excel)</h2>
 
             {!importPreview && (
               <div className="space-y-6">
@@ -1069,17 +1526,51 @@ export default function InventoryPage() {
                   />
                 </div>
 
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-gray-700 font-semibold flex items-center gap-2">
+                        <FaFileExcel className="text-green-600" />
+                        Plantilla Excel con instrucciones
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Incluye ejemplos, guía de campos y formato listo para usar
+                      </p>
+                    </div>
+                    <button
+                      onClick={descargarPlantillaExcel}
+                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer whitespace-nowrap"
+                    >
+                      <FaDownload />
+                      Descargar Plantilla Excel
+                    </button>
+                  </div>
+                </div>
+
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-gray-700 mb-3 font-semibold">Formato esperado:</p>
+                  <p className="text-sm text-gray-700 font-semibold mb-2">Columnas del archivo CSV:</p>
                   <p className="text-xs text-gray-600 font-mono break-all bg-white p-3 rounded border border-gray-200">
-                    codigo_principal,codigo_barras,nombre,descripcion,precio_costo,precio_unitario,stock_actual,categoria_nombre,iva_aplica,ice_aplica,numero_lote
+                    codigo_principal,codigo_barras,nombre,descripcion,precio_costo,precio_unitario,stock_actual,categoria_nombre,iva_aplica,ice_aplica,numero_lote,fecha_vencimiento,margen_ganancia,modo_precio
                   </p>
-                  <p className="text-xs text-gray-600 mt-3">
-                    <strong>Nota:</strong> Usa 0 o 1 para iva_aplica e ice_aplica. Las categorías se crearán automáticamente si no existen. 
-                    El código_barras, precio_costo y numero_lote son opcionales.
-                  </p>
-                  <p className="text-xs text-purple-600 mt-2">
-                    <strong>🏷️ Lotes:</strong> Si incluyes stock_actual y numero_lote, se creará automáticamente el lote. Ej: "Lote 1", "L-001"
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs text-gray-600">
+                      <strong>📌 Obligatorios:</strong> codigo_principal, nombre
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      <strong>📋 Opcionales:</strong> codigo_barras, descripcion, precio_costo, numero_lote, fecha_vencimiento
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      <strong>🔢 Valores:</strong> iva_aplica/ice_aplica = 0 o 1 | modo_precio = "automatico" o "manual" | margen_ganancia = número (ej: 30)
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      <strong>📅 Formato fecha:</strong> YYYY-MM-DD (ej: 2027-12-31)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <p className="text-xs text-purple-700">
+                    <strong>🏷️ Lotes:</strong> Si incluyes stock_actual y numero_lote, se creará automáticamente el lote con la fecha de vencimiento indicada.
                   </p>
                 </div>
 
@@ -1106,40 +1597,46 @@ export default function InventoryPage() {
                   <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-300 rounded-lg">
                     <table className="w-full text-left border-collapse">
                       <thead className="sticky top-0">
-                        <tr className="bg-gray-100 text-gray-700 uppercase text-sm font-semibold">
-                          <th className="px-4 py-3 border-r">Código</th>
-                          <th className="px-4 py-3 border-r">Cod. Barras</th>
-                          <th className="px-4 py-3 border-r">Nombre</th>
-                          <th className="px-4 py-3 border-r">Descripción</th>
-                          <th className="px-4 py-3 border-r">Categoría</th>
-                          <th className="px-4 py-3 border-r">Stock</th>
-                          <th className="px-4 py-3 border-r">Lote</th>
-                          <th className="px-4 py-3 border-r">P. Costo</th>
-                          <th className="px-4 py-3 border-r">P. Venta</th>
-                          <th className="px-4 py-3 border-r">IVA</th>
-                          <th className="px-4 py-3">ICE</th>
+                        <tr className="bg-gray-100 text-gray-700 uppercase text-xs font-semibold">
+                          <th className="px-3 py-2 border-r">Código</th>
+                          <th className="px-3 py-2 border-r">Nombre</th>
+                          <th className="px-3 py-2 border-r">Categoría</th>
+                          <th className="px-3 py-2 border-r">Stock</th>
+                          <th className="px-3 py-2 border-r">Lote</th>
+                          <th className="px-3 py-2 border-r">Vence</th>
+                          <th className="px-3 py-2 border-r">Costo</th>
+                          <th className="px-3 py-2 border-r">Venta</th>
+                          <th className="px-3 py-2 border-r">Margen</th>
+                          <th className="px-3 py-2 border-r">Modo</th>
+                          <th className="px-3 py-2 border-r">IVA</th>
+                          <th className="px-3 py-2">ICE</th>
                         </tr>
                       </thead>
                       <tbody>
                         {importPreview.preview.map((r, idx) => (
                           <tr key={idx} className="border-b hover:bg-gray-50">
-                            <td className="px-4 py-2 border-r text-sm font-medium">{r.codigo_principal || "-"}</td>
-                            <td className="px-4 py-2 border-r text-sm">{r.codigo_barras || "-"}</td>
-                            <td className="px-4 py-2 border-r text-sm">{r.nombre || "-"}</td>
-                            <td className="px-4 py-2 border-r text-sm text-gray-600 max-w-xs truncate">{r.descripcion || "-"}</td>
-                            <td className="px-4 py-2 border-r text-sm">{r.categoria_nombre || "Sin categoría"}</td>
-                            <td className="px-4 py-2 border-r text-sm text-center">{r.stock_actual || "0"}</td>
-                            <td className="px-4 py-2 border-r text-sm text-center">
+                            <td className="px-3 py-2 border-r text-xs font-medium">{r.codigo_principal || "-"}</td>
+                            <td className="px-3 py-2 border-r text-xs max-w-[150px] truncate" title={r.nombre}>{r.nombre || "-"}</td>
+                            <td className="px-3 py-2 border-r text-xs">{r.categoria_nombre || "-"}</td>
+                            <td className="px-3 py-2 border-r text-xs text-center">{r.stock_actual || "0"}</td>
+                            <td className="px-3 py-2 border-r text-xs text-center">
                               {r.numero_lote ? (
-                                <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs">{r.numero_lote}</span>
+                                <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px]">{r.numero_lote}</span>
                               ) : (
-                                <span className="text-gray-400 text-xs">Auto</span>
+                                <span className="text-gray-400 text-[10px]">Auto</span>
                               )}
                             </td>
-                            <td className="px-4 py-2 border-r text-sm">${r.precio_costo || "0.00"}</td>
-                            <td className="px-4 py-2 border-r text-sm">${r.precio_unitario || "0.00"}</td>
-                            <td className="px-4 py-2 border-r text-sm text-center">{r.iva_aplica ? "✓" : "✗"}</td>
-                            <td className="px-4 py-2 text-sm text-center">{r.ice_aplica ? "✓" : "✗"}</td>
+                            <td className="px-3 py-2 border-r text-xs text-center">{r.fecha_vencimiento || "-"}</td>
+                            <td className="px-3 py-2 border-r text-xs">${r.precio_costo || "0.00"}</td>
+                            <td className="px-3 py-2 border-r text-xs">${r.precio_unitario || "0.00"}</td>
+                            <td className="px-3 py-2 border-r text-xs text-center">{r.margen_ganancia || "30"}%</td>
+                            <td className="px-3 py-2 border-r text-xs text-center">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] ${r.modo_precio === 'manual' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
+                                {r.modo_precio === 'manual' ? '🔒' : '🔄'}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 border-r text-xs text-center">{r.iva_aplica ? "✓" : "✗"}</td>
+                            <td className="px-3 py-2 text-xs text-center">{r.ice_aplica ? "✓" : "✗"}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1289,12 +1786,88 @@ export default function InventoryPage() {
                     step={PRODUCT_LIMITS.precio_unitario.step}
                     min={PRODUCT_LIMITS.precio_unitario.min}
                     max={PRODUCT_LIMITS.precio_unitario.max}
-                    className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
+                    className={`w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base ${
+                      form.modo_precio === "automatico" ? "bg-green-50 border-green-300" : ""
+                    }`}
                     onChange={handleChange}
                     value={form.precio_unitario}
+                    readOnly={form.modo_precio === "automatico"}
+                    title={form.modo_precio === "automatico" ? "Calculado automáticamente" : "Ingrese precio manualmente"}
                   />
+                  {form.modo_precio === "automatico" && (
+                    <p className="text-xs text-green-600 mt-1">✓ Calculado automáticamente</p>
+                  )}
                 </div>
+              </div>
 
+              {/* SECCIÓN: CONFIGURACIÓN DE PRECIOS */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  💰 Configuración de Precios
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Margen de ganancia */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Margen de Ganancia (%)</label>
+                    <input
+                      name="margen_ganancia"
+                      placeholder="30"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="1000"
+                      className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm sm:text-base"
+                      onChange={handleChange}
+                      value={form.margen_ganancia}
+                    />
+                  </div>
+
+                  {/* Modo de precio */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Modo de Precio</label>
+                    <div className="space-y-2 mt-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="modo_precio"
+                          value="automatico"
+                          checked={form.modo_precio === "automatico"}
+                          onChange={handleChange}
+                          className="w-4 h-4 text-green-600 focus:ring-green-500"
+                        />
+                        <span className="text-sm">Automático <span className="text-gray-400">(recalcula precio)</span></span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="modo_precio"
+                          value="manual"
+                          checked={form.modo_precio === "manual"}
+                          onChange={handleChange}
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">Manual <span className="text-gray-400">(precio fijo)</span></span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Precio sugerido (solo lectura) */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Precio Sugerido</label>
+                    <div className="w-full px-3 sm:px-4 py-2 border rounded-lg bg-gray-50 text-gray-600 text-sm sm:text-base">
+                      ${calcularPrecioSugerido()}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Costo + {form.margen_ganancia || 0}% margen</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECCIÓN: STOCK Y LOTES */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  📦 Stock e Inventario
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Stock Inicial</label>
                   <input
@@ -1314,31 +1887,63 @@ export default function InventoryPage() {
                   {editing && <p className="text-xs text-gray-500 mt-1">Los cambios de stock se realizan desde Ingresar/Deshechar</p>}
                 </div>
 
-                {/* Campo de Lote - Solo visible al crear y si hay stock */}
+                {/* Campos de Lote - Solo visible al crear y si hay stock */}
                 {!editing && (
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                      Número de Lote {parseInt(form.stock_actual) > 0 && <span className="text-purple-600">(opcional)</span>}
-                    </label>
-                    <input
-                      name="numero_lote"
-                      placeholder="Ej: Lote 1, Lote A..."
-                      type="text"
-                      maxLength={50}
-                      disabled={!form.stock_actual || parseInt(form.stock_actual) <= 0}
-                      className={`w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm sm:text-base ${
-                        !form.stock_actual || parseInt(form.stock_actual) <= 0 ? "bg-gray-100 text-gray-400" : ""
-                      }`}
-                      onChange={handleChange}
-                      value={form.numero_lote}
-                      title={!form.stock_actual || parseInt(form.stock_actual) <= 0 ? "Ingrese stock para habilitar" : ""}
-                    />
-                    {parseInt(form.stock_actual) > 0 && (
-                      <p className="text-xs text-gray-500 mt-1">Si lo deja vacío, se generará automáticamente</p>
-                    )}
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                        Número de Lote {parseInt(form.stock_actual) > 0 && <span className="text-purple-600">(opcional)</span>}
+                      </label>
+                      <input
+                        name="numero_lote"
+                        placeholder="Ej: Lote 1, Lote A..."
+                        type="text"
+                        maxLength={50}
+                        disabled={!form.stock_actual || parseInt(form.stock_actual) <= 0}
+                        className={`w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm sm:text-base ${
+                          !form.stock_actual || parseInt(form.stock_actual) <= 0 ? "bg-gray-100 text-gray-400" : ""
+                        }`}
+                        onChange={handleChange}
+                        value={form.numero_lote}
+                        title={!form.stock_actual || parseInt(form.stock_actual) <= 0 ? "Ingrese stock para habilitar" : ""}
+                      />
+                      {parseInt(form.stock_actual) > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">Si lo deja vacío, se generará automáticamente</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                        Fecha de Vencimiento {parseInt(form.stock_actual) > 0 && <span className="text-red-600">*</span>}
+                      </label>
+                      <input
+                        name="fecha_vencimiento"
+                        type="date"
+                        required={parseInt(form.stock_actual) > 0}
+                        disabled={!form.stock_actual || parseInt(form.stock_actual) <= 0}
+                        className={`w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm sm:text-base ${
+                          !form.stock_actual || parseInt(form.stock_actual) <= 0 ? "bg-gray-100 text-gray-400" : 
+                          !form.fecha_vencimiento && parseInt(form.stock_actual) > 0 ? "border-red-300 bg-red-50" : ""
+                        }`}
+                        onChange={handleChange}
+                        value={form.fecha_vencimiento}
+                        min={new Date().toISOString().split('T')[0]}
+                        title={!form.stock_actual || parseInt(form.stock_actual) <= 0 ? "Ingrese stock para habilitar" : ""}
+                      />
+                      {parseInt(form.stock_actual) > 0 && (
+                        <p className="text-xs text-red-500 mt-1">⚠️ Obligatorio - Fecha de caducidad del producto</p>
+                      )}
+                    </div>
+                  </>
                 )}
+                </div>
+              </div>
 
+              {/* SECCIÓN: CATEGORÍA Y CLASIFICACIÓN */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  🏷️ Clasificación
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Categoría</label>
                   <select
@@ -1354,6 +1959,95 @@ export default function InventoryPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+                </div>
+              </div>
+
+              {/* SECCIÓN DE IDENTIFICACIÓN Y CONTROL */}
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  📦 Identificación y Control
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Unidad de medida */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Unidad de Medida</label>
+                    <select
+                      name="unidad_medida"
+                      className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
+                      onChange={handleChange}
+                      value={form.unidad_medida}
+                    >
+                      <option value="unidad">Unidad</option>
+                      <option value="kg">Kilogramo (Kg)</option>
+                      <option value="lb">Libra (Lb)</option>
+                      <option value="caja">Caja</option>
+                      <option value="paquete">Paquete</option>
+                      <option value="litro">Litro</option>
+                      <option value="metro">Metro</option>
+                      <option value="docena">Docena</option>
+                    </select>
+                  </div>
+
+                  {/* Marca */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Marca</label>
+                    <input
+                      name="marca"
+                      placeholder="Ej: Sony, Samsung..."
+                      type="text"
+                      maxLength={100}
+                      className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
+                      onChange={handleChange}
+                      value={form.marca}
+                    />
+                  </div>
+
+                  {/* SKU */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">SKU (Código Interno)</label>
+                    <input
+                      name="sku"
+                      placeholder="Ej: PROD-001"
+                      type="text"
+                      maxLength={50}
+                      className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
+                      onChange={handleChange}
+                      value={form.sku}
+                    />
+                  </div>
+
+                  {/* Proveedor Principal */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Proveedor Principal</label>
+                    <select
+                      name="proveedor_principal_id"
+                      className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
+                      onChange={handleChange}
+                      value={form.proveedor_principal_id}
+                    >
+                      <option value="">Seleccione proveedor (opcional)</option>
+                      {proveedores.map((prov) => (
+                        <option key={prov.proveedor_id} value={prov.proveedor_id}>
+                          {prov.razon_social || prov.nombre_comercial}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Ubicación en bodega */}
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Ubicación en Bodega</label>
+                    <input
+                      name="ubicacion_bodega"
+                      placeholder="Ej: Pasillo 3 – Estante B"
+                      type="text"
+                      maxLength={100}
+                      className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
+                      onChange={handleChange}
+                      value={form.ubicacion_bodega}
+                    />
+                  </div>
                 </div>
               </div>
 

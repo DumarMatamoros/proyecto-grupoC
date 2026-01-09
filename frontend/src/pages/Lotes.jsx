@@ -12,12 +12,17 @@ import {
   FaFilter,
   FaChevronDown,
   FaChevronUp,
+  FaTruck,
+  FaTable,
+  FaThLarge,
+  FaFileExcel,
 } from "react-icons/fa";
 import api from "../services/api";
 import { getErrorMessage } from "../utils/errorTranslator";
 import LoadingSpinner from "../components/LoadingSpinner";
 import EmptyState from "../components/EmptyState";
 import useToast from "../hooks/useToast";
+import * as XLSX from "xlsx";
 
 export default function LotesPage() {
   const toast = useToast();
@@ -46,6 +51,9 @@ export default function LotesPage() {
 
   // Expandir/colapsar lotes en la lista
   const [expandido, setExpandido] = useState({});
+
+  // Vista: 'tabla' o 'tarjetas'
+  const [vistaActiva, setVistaActiva] = useState("tabla");
 
   // ============================
   // CARGAR PRODUCTOS
@@ -179,6 +187,70 @@ export default function LotesPage() {
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
+  };
+
+  // ============================
+  // EXPORTAR LOTES A EXCEL
+  // ============================
+  const exportarExcel = () => {
+    if (!productoSeleccionado || lotesFiltrados.length === 0) {
+      toast.error("No hay lotes para exportar");
+      return;
+    }
+
+    const data = lotesFiltrados.map((lote) => ({
+      "N° Lote": lote.numero_lote || `#${lote.lote_id}`,
+      "Fecha Ingreso": lote.fecha_ingreso
+        ? new Date(lote.fecha_ingreso).toLocaleDateString("es-EC")
+        : "-",
+      "Proveedor": lote.proveedor_nombre || "Ingreso Manual",
+      "# Factura": lote.numero_factura || "-",
+      "Cant. Inicial": lote.cantidad_inicial,
+      "Cant. Disponible": lote.cantidad_disponible,
+      "Costo Unitario": `$${parseFloat(lote.costo_unitario || 0).toFixed(2)}`,
+      "Valor Inventario": `$${(lote.cantidad_disponible * parseFloat(lote.costo_unitario || 0)).toFixed(2)}`,
+      "Fecha Vencimiento": lote.fecha_vencimiento
+        ? new Date(lote.fecha_vencimiento).toLocaleDateString("es-EC")
+        : "Sin vencimiento",
+      "Días para Vencer": lote.dias_para_vencimiento !== null 
+        ? (lote.dias_para_vencimiento <= 0 ? "VENCIDO" : `${Math.round(lote.dias_para_vencimiento)} días`)
+        : "N/A",
+      "Estado": lote.estado.charAt(0).toUpperCase() + lote.estado.slice(1),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Lotes");
+    
+    // Ajustar anchos de columna
+    ws["!cols"] = [
+      { wch: 12 }, // Lote
+      { wch: 14 }, // Fecha Ingreso
+      { wch: 25 }, // Proveedor
+      { wch: 15 }, // Factura
+      { wch: 12 }, // Cant Inicial
+      { wch: 14 }, // Cant Disponible
+      { wch: 14 }, // Costo
+      { wch: 16 }, // Valor
+      { wch: 16 }, // Vencimiento
+      { wch: 16 }, // Días
+      { wch: 10 }, // Estado
+    ];
+
+    XLSX.writeFile(wb, `Lotes_${productoSeleccionado.codigo_principal}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success("Lotes exportados a Excel");
+  };
+
+  // ============================
+  // FORMATEAR FECHA
+  // ============================
+  const formatearFecha = (fecha) => {
+    if (!fecha) return "-";
+    return new Date(fecha).toLocaleDateString("es-EC", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    });
   };
 
   // ============================
@@ -347,24 +419,276 @@ export default function LotesPage() {
                 </div>
               )}
 
-              {/* Filtro de estado */}
-              <div className="flex items-center gap-2 mb-4">
-                <FaFilter className="text-gray-400" />
-                <select
-                  value={filtroEstado}
-                  onChange={(e) => setFiltroEstado(e.target.value)}
-                  className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="todos">Todos los estados</option>
-                  <option value="activo">Activos</option>
-                  <option value="agotado">Agotados</option>
-                  <option value="danado">Dañados</option>
-                  <option value="vencido">Vencidos</option>
-                </select>
+              {/* Filtro de estado y controles */}
+              <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <FaFilter className="text-gray-400" />
+                  <select
+                    value={filtroEstado}
+                    onChange={(e) => setFiltroEstado(e.target.value)}
+                    className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="todos">Todos los estados</option>
+                    <option value="activo">Activos</option>
+                    <option value="agotado">Agotados</option>
+                    <option value="danado">Dañados</option>
+                    <option value="vencido">Vencidos</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Toggle de vista */}
+                  <div className="flex bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => setVistaActiva("tabla")}
+                      className={`p-2 rounded-md transition cursor-pointer ${
+                        vistaActiva === "tabla"
+                          ? "bg-white shadow text-blue-600"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                      title="Vista de tabla"
+                    >
+                      <FaTable />
+                    </button>
+                    <button
+                      onClick={() => setVistaActiva("tarjetas")}
+                      className={`p-2 rounded-md transition cursor-pointer ${
+                        vistaActiva === "tarjetas"
+                          ? "bg-white shadow text-blue-600"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                      title="Vista de tarjetas"
+                    >
+                      <FaThLarge />
+                    </button>
+                  </div>
+
+                  {/* Exportar Excel */}
+                  <button
+                    onClick={exportarExcel}
+                    className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition cursor-pointer text-sm"
+                    title="Exportar a Excel"
+                  >
+                    <FaFileExcel /> Exportar
+                  </button>
+                </div>
               </div>
 
-              {/* Lista de lotes */}
-              <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+              {/* VISTA DE TABLA PROFESIONAL */}
+              {vistaActiva === "tabla" && (
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gradient-to-r from-purple-600 to-purple-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                          Lote
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                          Fecha Ingreso
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                          Proveedor
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                          Cant.
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                          Disp.
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-white uppercase tracking-wider">
+                          Costo
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                          Vence
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                          Estado
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                          Acciones
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {lotesFiltrados.length === 0 ? (
+                        <tr>
+                          <td colSpan="9" className="px-4 py-8 text-center text-gray-500">
+                            No hay lotes {filtroEstado !== "todos" && `con estado "${filtroEstado}"`}
+                          </td>
+                        </tr>
+                      ) : (
+                        lotesFiltrados.map((lote) => {
+                          const diasVencer = lote.dias_para_vencimiento;
+                          const esProximoVencer = diasVencer !== null && diasVencer > 0 && diasVencer <= 30;
+                          const estaVencido = diasVencer !== null && diasVencer <= 0;
+                          
+                          return (
+                            <tr
+                              key={lote.lote_id}
+                              className={`hover:bg-gray-50 transition ${
+                                lote.estado === "danado"
+                                  ? "bg-red-50"
+                                  : lote.estado === "vencido" || estaVencido
+                                  ? "bg-orange-50"
+                                  : esProximoVencer
+                                  ? "bg-yellow-50"
+                                  : ""
+                              }`}
+                            >
+                              {/* Número de Lote */}
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-md flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                                    {lote.numero_lote?.replace("L-", "").slice(0, 3) || lote.lote_id}
+                                  </div>
+                                  <span className="font-medium text-gray-800">
+                                    {lote.numero_lote || `#${lote.lote_id}`}
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Fecha de Ingreso */}
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                {formatearFecha(lote.fecha_ingreso)}
+                              </td>
+
+                              {/* Proveedor */}
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <FaTruck className={`text-sm ${lote.proveedor_nombre === "Ingreso Manual" ? "text-gray-400" : "text-blue-500"}`} />
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-800 truncate max-w-[150px]" title={lote.proveedor_nombre}>
+                                      {lote.proveedor_nombre || "Ingreso Manual"}
+                                    </p>
+                                    {lote.numero_factura && lote.numero_factura !== "-" && (
+                                      <p className="text-xs text-gray-500">Fact: {lote.numero_factura}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Cantidad Inicial */}
+                              <td className="px-4 py-3 whitespace-nowrap text-center">
+                                <span className="text-sm text-gray-600">{lote.cantidad_inicial}</span>
+                              </td>
+
+                              {/* Cantidad Disponible */}
+                              <td className="px-4 py-3 whitespace-nowrap text-center">
+                                <span className={`text-sm font-bold ${
+                                  lote.cantidad_disponible === 0 
+                                    ? "text-red-500" 
+                                    : lote.cantidad_disponible <= lote.cantidad_inicial * 0.2 
+                                    ? "text-orange-500" 
+                                    : "text-green-600"
+                                }`}>
+                                  {lote.cantidad_disponible}
+                                </span>
+                              </td>
+
+                              {/* Costo Unitario */}
+                              <td className="px-4 py-3 whitespace-nowrap text-right">
+                                <span className="text-sm font-medium text-gray-800">
+                                  ${parseFloat(lote.costo_unitario || 0).toFixed(2)}
+                                </span>
+                              </td>
+
+                              {/* Fecha Vencimiento */}
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {lote.fecha_vencimiento ? (
+                                  <div>
+                                    <p className={`text-sm font-medium ${
+                                      estaVencido ? "text-red-600" : esProximoVencer ? "text-orange-600" : "text-gray-700"
+                                    }`}>
+                                      {formatearFecha(lote.fecha_vencimiento)}
+                                    </p>
+                                    <p className={`text-xs ${
+                                      estaVencido ? "text-red-500 font-bold" : esProximoVencer ? "text-orange-500" : "text-gray-400"
+                                    }`}>
+                                      {estaVencido 
+                                        ? "¡VENCIDO!" 
+                                        : diasVencer !== null 
+                                        ? `${Math.round(diasVencer)} días`
+                                        : ""
+                                      }
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-gray-400 italic">Sin venc.</span>
+                                )}
+                              </td>
+
+                              {/* Estado */}
+                              <td className="px-4 py-3 whitespace-nowrap text-center">
+                                <EstadoBadge estado={lote.estado} info={lote.estado_info} />
+                              </td>
+
+                              {/* Acciones */}
+                              <td className="px-4 py-3 whitespace-nowrap text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => verHistorial(lote)}
+                                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                    title="Ver historial"
+                                  >
+                                    <FaHistory />
+                                  </button>
+                                  
+                                  {lote.estado === "activo" && lote.cantidad_disponible > 0 && (
+                                    <>
+                                      <button
+                                        onClick={() => setModalBaja(lote)}
+                                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                                        title="Dar de baja"
+                                      >
+                                        <FaTrash />
+                                      </button>
+                                      
+                                      {lote.fecha_vencimiento && (
+                                        <button
+                                          onClick={() => setConfirmVencido(lote)}
+                                          className="p-2 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition cursor-pointer"
+                                          title="Marcar vencido"
+                                        >
+                                          <FaCalendarTimes />
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+
+                  {/* Totales de la tabla */}
+                  {lotesFiltrados.length > 0 && (
+                    <div className="bg-gray-50 px-4 py-3 border-t flex justify-between items-center text-sm">
+                      <span className="text-gray-600">
+                        Mostrando <strong>{lotesFiltrados.length}</strong> lotes
+                      </span>
+                      <div className="flex gap-6">
+                        <span className="text-gray-600">
+                          Total disponible: <strong className="text-green-600">
+                            {lotesFiltrados.reduce((acc, l) => acc + l.cantidad_disponible, 0)} uds
+                          </strong>
+                        </span>
+                        <span className="text-gray-600">
+                          Valor inventario: <strong className="text-purple-600">
+                            ${lotesFiltrados.reduce((acc, l) => acc + (l.cantidad_disponible * parseFloat(l.costo_unitario || 0)), 0).toFixed(2)}
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* VISTA DE TARJETAS (Original) */}
+              {vistaActiva === "tarjetas" && (
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto">
                 {lotesFiltrados.length === 0 ? (
                   <p className="text-center text-gray-500 py-8">
                     No hay lotes {filtroEstado !== "todos" && `con estado "${filtroEstado}"`}
@@ -431,6 +755,19 @@ export default function LotesPage() {
                       {/* Detalle expandido */}
                       {expandido[lote.lote_id] && (
                         <div className="px-4 pb-4 border-t bg-white/50">
+                          {/* Info del proveedor */}
+                          <div className="flex items-center gap-2 py-3 border-b mb-3">
+                            <FaTruck className={`text-sm ${lote.proveedor_nombre === "Ingreso Manual" ? "text-gray-400" : "text-blue-500"}`} />
+                            <span className="text-sm font-medium text-gray-700">
+                              {lote.proveedor_nombre || "Ingreso Manual"}
+                            </span>
+                            {lote.numero_factura && lote.numero_factura !== "-" && (
+                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                Fact: {lote.numero_factura}
+                              </span>
+                            )}
+                          </div>
+                          
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4">
                             <div>
                               <p className="text-xs text-gray-500">Costo Unitario</p>
@@ -466,7 +803,7 @@ export default function LotesPage() {
                                 {lote.dias_para_vencimiento !== null
                                   ? lote.dias_para_vencimiento <= 0
                                     ? "¡VENCIDO!"
-                                    : `${lote.dias_para_vencimiento} días`
+                                    : `${Math.round(lote.dias_para_vencimiento)} días`
                                   : "N/A"}
                               </p>
                             </div>
@@ -519,7 +856,8 @@ export default function LotesPage() {
                     </div>
                   ))
                 )}
-              </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -545,7 +883,7 @@ export default function LotesPage() {
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
               <p className="text-sm text-yellow-800">
                 <strong>Atención:</strong> Esta acción descontará las unidades del stock y
-                registrará el movimiento en el Kardex.
+                registrará el movimiento de productos.
               </p>
             </div>
 

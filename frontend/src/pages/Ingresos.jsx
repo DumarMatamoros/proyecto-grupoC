@@ -723,7 +723,7 @@ export default function Ingresos() {
                   <SearchableSelect
                     options={productos.map((p) => ({
                       value: p.producto_id.toString(),
-                      label: `[${p.codigo_principal}] ${p.nombre}`,
+                      label: `[${p.codigo_principal}] ${p.nombre} (Stock: ${p.stock_actual})`,
                       producto: p,
                     }))}
                     value={nuevaLinea.producto_id}
@@ -1055,6 +1055,7 @@ export default function Ingresos() {
       {/* CONFIRMACIÓN DE ELIMINACIÓN */}
       {confirmDelete && (
         <ConfirmDialog
+          isOpen={true}
           title="Eliminar Compra"
           message={`¿Estás seguro de eliminar la compra "${confirmDelete?.numero_factura_proveedor || ''}"? Esta acción revertirá el stock de los productos.`}
           onConfirm={handleDelete}
