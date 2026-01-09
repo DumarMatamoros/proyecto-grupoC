@@ -221,18 +221,18 @@ export default function Sidebar({ collapsed = false, onToggle }) {
               badge={counters.productos}
             />
             <MenuItem 
+              to="/dashboard/kardex" 
+              icon={FaChartLine} 
+              label="Movimientos" 
+              active={isActive("/dashboard/kardex")}
+              iconColor="text-cyan-400"
+            />
+            <MenuItem 
               to="/dashboard/categoria" 
               icon={FaTags} 
               label="Categorías" 
               active={isActive("/dashboard/categoria")}
               badge={counters.categorias}
-            />
-            <MenuItem 
-              to="/dashboard/kardex" 
-              icon={FaChartLine} 
-              label="Movimientos (Kardex)" 
-              active={isActive("/dashboard/kardex")}
-              iconColor="text-cyan-400"
             />
             <MenuItem 
               to="/dashboard/lotes" 
