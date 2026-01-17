@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { FaBox, FaPlus, FaEdit, FaTrash, FaTimes, FaFileImport, FaSlidersH, FaBan, FaCheck, FaExclamationTriangle, FaCamera, FaCloudUploadAlt, FaDownload, FaFileExcel } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import api from "../services/api";
+import { getImpuestos } from "../services/facturaService";
 import { getErrorMessage } from "../utils/errorTranslator";
 import { PRODUCT_LIMITS } from "../utils/validationLimits";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -17,6 +18,8 @@ export default function InventoryPage() {
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [proveedores, setProveedores] = useState([]);
+  const [ivaConfigSistema, setIvaConfigSistema] = useState(15); // IVA desde configuración
+  const [iceConfigSistema, setIceConfigSistema] = useState(0); // ICE desde configuración
   const [loading, setLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -73,7 +76,7 @@ export default function InventoryPage() {
     imagen: null,
     iva_aplica: 0,
     ice_aplica: 0,
-    iva_porcentaje: "15.00",
+    iva_porcentaje: "15.00", // Se actualizará con el valor del sistema
     ice_porcentaje: "0.00",
     numero_lote: "", // Lote inicial para el stock
     fecha_vencimiento: "", // Fecha de caducidad del lote
@@ -87,6 +90,17 @@ export default function InventoryPage() {
     margen_ganancia: "30.00",
     modo_precio: "automatico",
   });
+
+  // Actualizar IVA e ICE en el formulario cuando se carga la configuración del sistema
+  useEffect(() => {
+    if (ivaConfigSistema || iceConfigSistema) {
+      setForm(prev => ({
+        ...prev,
+        iva_porcentaje: ivaConfigSistema.toFixed(2),
+        ice_porcentaje: iceConfigSistema.toFixed(2)
+      }));
+    }
+  }, [ivaConfigSistema, iceConfigSistema]);
 
   // ============================
   // CARGAR DATOS
@@ -134,10 +148,22 @@ export default function InventoryPage() {
     }
   };
 
+  const cargarIvaConfig = async () => {
+    try {
+      const impuestos = await getImpuestos();
+      setIvaConfigSistema(impuestos.iva);
+      setIceConfigSistema(impuestos.ice);
+    } catch (error) {
+      console.error("Error cargando impuestos del sistema:", error);
+      // Mantener los valores por defecto
+    }
+  };
+
   useEffect(() => {
     cargarProductos();
     cargarCategorias();
     cargarProveedores();
+    cargarIvaConfig();
   }, []);
 
   // ============================
@@ -204,7 +230,7 @@ export default function InventoryPage() {
   // ============================
   // NUEVO PRODUCTO
   // ============================
-  const emptyForm = {
+  const getEmptyForm = () => ({
     codigo_principal: "",
     codigo_barras: "",
     nombre: "",
@@ -216,8 +242,8 @@ export default function InventoryPage() {
     imagen: null,
     iva_aplica: 0,
     ice_aplica: 0,
-    iva_porcentaje: "15.00",
-    ice_porcentaje: "0.00",
+    iva_porcentaje: ivaConfigSistema.toFixed(2), // Usar IVA del sistema
+    ice_porcentaje: iceConfigSistema.toFixed(2), // Usar ICE del sistema
     numero_lote: "", // Lote inicial para el stock
     fecha_vencimiento: "", // Fecha de caducidad del lote
     // Campos de identificación y control
@@ -229,7 +255,7 @@ export default function InventoryPage() {
     // Configuración de precios
     margen_ganancia: "30.00",
     modo_precio: "automatico",
-  };
+  });
 
   // ============================
   // CÁLCULO DE PRECIO SUGERIDO (basado en costo + margen)
@@ -245,8 +271,8 @@ export default function InventoryPage() {
   // ============================
   const calcularPrecioFinal = () => {
     const precioBase = parseFloat(form.precio_unitario) || 0;
-    const ivaPorcentaje = form.iva_aplica ? (parseFloat(form.iva_porcentaje) || 0) : 0;
-    const icePorcentaje = form.ice_aplica ? (parseFloat(form.ice_porcentaje) || 0) : 0;
+    const ivaPorcentaje = form.iva_aplica ? ivaConfigSistema : 0;
+    const icePorcentaje = form.ice_aplica ? iceConfigSistema : 0;
     
     const ivaValor = precioBase * (ivaPorcentaje / 100);
     const iceValor = precioBase * (icePorcentaje / 100);
@@ -263,6 +289,7 @@ export default function InventoryPage() {
   };
 
   const abrirNuevo = () => {
+    const emptyForm = getEmptyForm();
     setEditing(null);
     setForm(emptyForm);
     setInitialForm(emptyForm);
@@ -2081,18 +2108,11 @@ export default function InventoryPage() {
                   </div>
                   {form.iva_aplica === 1 && (
                     <div className="ml-8 flex items-center gap-2">
-                      <label className="text-sm text-gray-600">Porcentaje IVA:</label>
-                      <input
-                        type="number"
-                        name="iva_porcentaje"
-                        value={form.iva_porcentaje}
-                        onChange={handleChange}
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        className="w-24 px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                      />
-                      <span className="text-sm text-gray-500">%</span>
+                      <label className="text-sm text-gray-600">IVA del sistema:</label>
+                      <span className="px-3 py-1.5 bg-gray-100 border border-gray-300 rounded-lg text-sm font-medium text-gray-700">
+                        {ivaConfigSistema}%
+                      </span>
+                      <span className="text-xs text-gray-400">(Configuración global)</span>
                     </div>
                   )}
                 </div>
@@ -2112,18 +2132,11 @@ export default function InventoryPage() {
                   </div>
                   {form.ice_aplica === 1 && (
                     <div className="ml-8 flex items-center gap-2">
-                      <label className="text-sm text-gray-600">Porcentaje ICE:</label>
-                      <input
-                        type="number"
-                        name="ice_porcentaje"
-                        value={form.ice_porcentaje}
-                        onChange={handleChange}
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        className="w-24 px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                      />
-                      <span className="text-sm text-gray-500">%</span>
+                      <label className="text-sm text-gray-600">ICE del sistema:</label>
+                      <span className="px-3 py-1.5 bg-gray-100 border border-gray-300 rounded-lg text-sm font-medium text-gray-700">
+                        {iceConfigSistema}%
+                      </span>
+                      <span className="text-xs text-gray-400">(Configuración global)</span>
                     </div>
                   )}
                 </div>

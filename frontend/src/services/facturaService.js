@@ -105,7 +105,30 @@ export const buscarClientes = async (query) => {
  */
 export const getIVA = async () => {
     const response = await api.get('/config/iva');
-    return response.data.iva_porcentaje || 15;
+    // La API retorna { success, message, data: { porcentaje, valor_decimal } }
+    return parseFloat(response.data.data?.porcentaje) || 15;
+};
+
+/**
+ * Obtener ICE configurado
+ * @returns {Promise<number>} Porcentaje de ICE
+ */
+export const getICE = async () => {
+    const response = await api.get('/config/ice');
+    return parseFloat(response.data.data?.porcentaje) || 0;
+};
+
+/**
+ * Obtener IVA e ICE configurados
+ * @returns {Promise<{iva: number, ice: number}>} Porcentajes de impuestos
+ */
+export const getImpuestos = async () => {
+    const response = await api.get('/config/impuestos');
+    const data = response.data.data;
+    return {
+        iva: parseFloat(data?.iva?.porcentaje) || 15,
+        ice: parseFloat(data?.ice?.porcentaje) || 0,
+    };
 };
 
 /**

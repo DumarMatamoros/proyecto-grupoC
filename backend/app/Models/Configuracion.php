@@ -60,7 +60,7 @@ class Configuracion extends Model
     {
         return match ($this->tipo) {
             'numeric' => (float) $this->valor,
-            'boolean' => (bool) $this->valor,
+            'boolean' => in_array($this->valor, ['1', 'true', true, 1], true),
             'json' => json_decode($this->valor, true),
             default => $this->valor,
         };

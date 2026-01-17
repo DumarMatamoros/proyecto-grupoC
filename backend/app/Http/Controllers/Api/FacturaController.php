@@ -17,11 +17,15 @@ use Carbon\Carbon;
 class FacturaController extends Controller
 {
     /**
-     * Listar facturas con filtros
+     * Listar facturas con filtros usando Scopes
      */
     public function index(Request $request)
     {
-        $query = Factura::with(['cliente', 'detalles.producto', 'sucursal', 'usuario']);
+        $query = Factura::with(['cliente', 'detalles.producto', 'sucursal', 'usuario'])
+            ->filterByDate($request->input('fecha_inicio'), $request->input('fecha_fin'))
+            ->search($request->input('search'))
+            ->filterByEstado($request->input('estado'))
+            ->filterByFormaPago($request->input('forma_pago'));
 
         // Filtrar por sucursal
         if ($request->filled('sucursal_id')) {
@@ -33,36 +37,26 @@ class FacturaController extends Controller
             $query->where('cliente_id', $request->cliente_id);
         }
 
-        // Filtrar por estado
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
-        }
-
-        // Filtrar por fechas
-        if ($request->filled('fecha_inicio')) {
-            $query->whereDate('fecha_emision', '>=', $request->fecha_inicio);
-        }
-
-        if ($request->filled('fecha_fin')) {
-            $query->whereDate('fecha_emision', '<=', $request->fecha_fin);
-        }
-
-        // Búsqueda general
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('numero_factura', 'like', "%{$search}%")
-                  ->orWhere('cedula_cliente', 'like', "%{$search}%")
-                  ->orWhere('nombre_cliente', 'like', "%{$search}%");
-            });
-        }
-
         // Ordenar por fecha descendente
-        $facturas = $query->orderBy('fecha_emision', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $query->orderBy('fecha_emision', 'desc')
+              ->orderBy('created_at', 'desc');
 
-        return response()->json($facturas);
+        // Paginación dinámica
+        if ($request->filled('per_page')) {
+            $perPage = min((int) $request->per_page, 100); // Máximo 100 por página
+            $facturas = $query->paginate($perPage);
+            
+            return response()->json([
+                'data' => $facturas->items(),
+                'current_page' => $facturas->currentPage(),
+                'last_page' => $facturas->lastPage(),
+                'per_page' => $facturas->perPage(),
+                'total' => $facturas->total(),
+            ]);
+        }
+
+        // Sin paginación (compatibilidad hacia atrás)
+        return response()->json($query->get());
     }
 
     /**
@@ -199,6 +193,7 @@ class FacturaController extends Controller
                 'total_iva' => 0,
                 'total' => 0,
                 'estado' => 'emitida',
+                'tipo_documento' => $request->tipo_documento ?? 'factura',
                 'cliente_id' => $esConsumidorFinal ? null : $request->cliente_id,
                 'cedula_cliente' => $request->cedula_cliente,
                 'nombre_cliente' => $esConsumidorFinal ? 'CONSUMIDOR FINAL' : $request->nombre_cliente,

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\FacturaController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ConfiguracionController;
 use App\Http\Controllers\Api\ProductoController;
 use App\Http\Controllers\Api\CategoriaController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\EgresoController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\ClienteController;
 use App\Http\Controllers\Api\ProveedorController;
+use App\Http\Controllers\Api\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,8 +51,10 @@ Route::get('/health', function () {
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 
-// CONSULTAR IVA SIN AUTENTICAR
+// CONSULTAR IMPUESTOS SIN AUTENTICAR
 Route::get('/config/iva', [ConfiguracionController::class, 'obtenerIVA']);
+Route::get('/config/ice', [ConfiguracionController::class, 'obtenerICE']);
+Route::get('/config/impuestos', [ConfiguracionController::class, 'obtenerImpuestos']);
 
 
 /*
@@ -188,6 +192,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /*
         |--------------------------------------------------------------------------
+        | PERFIL DE USUARIO
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/profile', [ProfileController::class, 'show']);
+        Route::post('/profile/update', [ProfileController::class, 'update']);
+        Route::post('/profile/password', [ProfileController::class, 'updatePassword']);
+        Route::delete('/profile/avatar', [ProfileController::class, 'deleteAvatar']);
+
+        /*
+        |--------------------------------------------------------------------------
         | RUTAS SOLO PARA ADMINISTRADORES
         |--------------------------------------------------------------------------
         */
@@ -212,6 +226,12 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/configuraciones/{clave}', [ConfiguracionController::class, 'show']);
             Route::put('/configuraciones/{clave}', [ConfiguracionController::class, 'update']);
             Route::put('/configuraciones-iva', [ConfiguracionController::class, 'actualizarIVA']);
+
+            // Settings - Módulo de Configuración POS
+            Route::get('/settings', [ConfiguracionController::class, 'getAllSettings']);
+            Route::put('/settings', [ConfiguracionController::class, 'bulkUpdate']);
+            Route::post('/settings/logo', [ConfiguracionController::class, 'uploadLogo']);
+            Route::delete('/settings/logo', [ConfiguracionController::class, 'deleteLogo']);
 
             // Roles y Permisos (ACL)
             Route::get('/roles', [PermissionController::class, 'index']);
@@ -247,6 +267,35 @@ Route::middleware('auth:sanctum')->group(function () {
             ->middleware('check.role:administrador,empleado');
         Route::delete('/facturas/{id}', [FacturaController::class, 'destroy'])
             ->middleware('check.role:administrador');
+
+        /*
+        |--------------------------------------------------------------------------
+        | REPORTES Y EXPORTACIÓN DE VENTAS
+        |--------------------------------------------------------------------------
+        */
+        // Exportación Excel
+        Route::get('/sales/export/excel', [ReportController::class, 'exportExcel'])
+            ->middleware('check.role:administrador,empleado');
+        
+        // Exportación PDF (Reporte de ventas)
+        Route::get('/sales/export/pdf', [ReportController::class, 'exportPdf'])
+            ->middleware('check.role:administrador,empleado');
+        
+        // Reporte diario - Datos JSON
+        Route::get('/sales/report/daily/data', [ReportController::class, 'dailyReportData'])
+            ->middleware('check.role:administrador,empleado');
+        
+        // Reporte diario - PDF
+        Route::get('/sales/report/daily', [ReportController::class, 'dailyReport'])
+            ->middleware('check.role:administrador,empleado');
+        
+        // Ticket de venta (formato térmico 80mm)
+        Route::get('/sales/{id}/ticket', [ReportController::class, 'ticket'])
+            ->middleware('check.role:administrador,empleado');
+        
+        // Factura formal A4
+        Route::get('/sales/{id}/invoice', [ReportController::class, 'invoice'])
+            ->middleware('check.role:administrador,empleado');
     });
 
     /*

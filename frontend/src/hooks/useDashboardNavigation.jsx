@@ -17,13 +17,18 @@ export const DASHBOARD_SECTIONS = {
   FACTURACION: "facturacion",
   KARDEX: "kardex",
   LOTES: "lotes",
-  VENTAS: "ventas",
+  // Ventas - Submenú
+  NUEVA_VENTA: "nueva-venta",
+  HISTORIAL_VENTAS: "historial-ventas",
+  REPORTE_DIARIO: "reporte-diario",
+  // Terceros
   CLIENTES: "clientes",
   PROVEEDORES: "proveedores",
   USUARIOS: "usuarios",
   PERMISOS: "permisos",
   PERMISOS_USUARIO: "permisos-usuario", // Nueva sección para permisos por usuario
   CONFIGURACION: "configuracion",
+  PERFIL: "perfil", // Mi Perfil
   FORBIDDEN: "forbidden",
   NOT_FOUND: "not-found",
 };

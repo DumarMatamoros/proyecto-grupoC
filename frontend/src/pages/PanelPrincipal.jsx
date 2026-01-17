@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   FaBox,
   FaExclamationTriangle,
@@ -15,8 +14,10 @@ import {
 } from "react-icons/fa";
 import Chart from "chart.js/auto";
 import api from "../services/api";
+import { useDashboardNavigation, DASHBOARD_SECTIONS } from "../hooks/useDashboardNavigation";
 
 export default function PanelPrincipal() {
+  const { navigateTo } = useDashboardNavigation();
   const ventasChartRef = useRef(null);
   const chartInstance = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -173,7 +174,7 @@ export default function PanelPrincipal() {
         ) : (
           <>
             {/* Productos */}
-            <Link to="/dashboard/productos" className="group">
+            <button onClick={() => navigateTo(DASHBOARD_SECTIONS.PRODUCTOS)} className="group text-left w-full">
               <div className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 p-6 border-l-4 border-blue-500">
                 <div className="flex justify-between items-start">
                   <div>
@@ -186,10 +187,10 @@ export default function PanelPrincipal() {
                   </div>
                 </div>
               </div>
-            </Link>
+            </button>
 
             {/* Stock Bajo */}
-            <Link to="/dashboard/productos?filter=stock_bajo" className="group">
+            <button onClick={() => navigateTo(DASHBOARD_SECTIONS.PRODUCTOS, { filterStockBajo: true })} className="group text-left w-full">
               <div className={`bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 p-6 border-l-4 ${stats.stockBajo > 0 ? 'border-yellow-500' : 'border-green-500'}`}>
                 <div className="flex justify-between items-start">
                   <div>
@@ -206,10 +207,10 @@ export default function PanelPrincipal() {
                   </div>
                 </div>
               </div>
-            </Link>
+            </button>
 
             {/* Lotes Activos */}
-            <Link to="/dashboard/lotes" className="group">
+            <button onClick={() => navigateTo(DASHBOARD_SECTIONS.LOTES)} className="group text-left w-full">
               <div className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 p-6 border-l-4 border-purple-500">
                 <div className="flex justify-between items-start">
                   <div>
@@ -222,10 +223,10 @@ export default function PanelPrincipal() {
                   </div>
                 </div>
               </div>
-            </Link>
+            </button>
 
             {/* Lotes Vencidos */}
-            <Link to="/dashboard/lotes?filter=vencidos" className="group">
+            <button onClick={() => navigateTo(DASHBOARD_SECTIONS.LOTES, { filterVencidos: true })} className="group text-left w-full">
               <div className={`bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 p-6 border-l-4 ${stats.lotesVencidos > 0 ? 'border-red-500' : 'border-green-500'}`}>
                 <div className="flex justify-between items-start">
                   <div>
@@ -242,7 +243,7 @@ export default function PanelPrincipal() {
                   </div>
                 </div>
               </div>
-            </Link>
+            </button>
           </>
         )}
       </div>
@@ -259,9 +260,12 @@ export default function PanelPrincipal() {
                 <p className="font-medium text-red-800">¡Atención! Tienes {stats.lotesVencidos} lote(s) vencido(s)</p>
                 <p className="text-sm text-red-600">Deben ser dados de baja del inventario</p>
               </div>
-              <Link to="/dashboard/lotes?filter=vencidos" className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium">
+              <button 
+                onClick={() => navigateTo(DASHBOARD_SECTIONS.LOTES, { filterVencidos: true })} 
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+              >
                 Ver lotes
-              </Link>
+              </button>
             </div>
           )}
           
@@ -274,9 +278,12 @@ export default function PanelPrincipal() {
                 <p className="font-medium text-yellow-800">{stats.proximosVencer} lote(s) próximo(s) a vencer</p>
                 <p className="text-sm text-yellow-600">Vencen en los próximos 30 días</p>
               </div>
-              <Link to="/dashboard/lotes" className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition text-sm font-medium">
+              <button 
+                onClick={() => navigateTo(DASHBOARD_SECTIONS.LOTES)} 
+                className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition text-sm font-medium"
+              >
                 Revisar
-              </Link>
+              </button>
             </div>
           )}
         </div>
@@ -312,9 +319,12 @@ export default function PanelPrincipal() {
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-800">Stock Bajo</h2>
-            <Link to="/dashboard/productos?filter=stock_bajo" className="text-blue-600 text-sm hover:underline">
+            <button 
+              onClick={() => navigateTo(DASHBOARD_SECTIONS.PRODUCTOS, { filterStockBajo: true })} 
+              className="text-blue-600 text-sm hover:underline"
+            >
               Ver todos
-            </Link>
+            </button>
           </div>
           
           {productosStockBajo.length === 0 ? (
@@ -351,9 +361,12 @@ export default function PanelPrincipal() {
       <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-gray-800">Últimos Movimientos</h2>
-          <Link to="/dashboard/kardex" className="text-blue-600 text-sm hover:underline">
+          <button 
+            onClick={() => navigateTo(DASHBOARD_SECTIONS.KARDEX)} 
+            className="text-blue-600 text-sm hover:underline"
+          >
             Ver Kardex completo
-          </Link>
+          </button>
         </div>
         
         {ultimosMovimientos.length === 0 ? (
@@ -419,8 +432,8 @@ export default function PanelPrincipal() {
 
       {/* ACCIONES RÁPIDAS FLOTANTES */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
-        <Link
-          to="/dashboard/facturacion"
+        <button
+          onClick={() => navigateTo(DASHBOARD_SECTIONS.NUEVA_VENTA)}
           className="w-14 h-14 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 group"
           title="Nueva Venta"
         >
@@ -428,9 +441,9 @@ export default function PanelPrincipal() {
           <span className="absolute right-full mr-3 px-3 py-1 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
             Nueva Venta
           </span>
-        </Link>
-        <Link
-          to="/dashboard/ingresos"
+        </button>
+        <button
+          onClick={() => navigateTo(DASHBOARD_SECTIONS.INGRESOS)}
           className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 group"
           title="Recepción de Mercadería"
         >
@@ -438,9 +451,9 @@ export default function PanelPrincipal() {
           <span className="absolute right-full mr-3 px-3 py-1 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
             Recepción
           </span>
-        </Link>
-        <Link
-          to="/dashboard/productos?action=new"
+        </button>
+        <button
+          onClick={() => navigateTo(DASHBOARD_SECTIONS.PRODUCTOS, { openNewModal: true })}
           className="w-14 h-14 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 group"
           title="Nuevo Producto"
         >
@@ -448,7 +461,7 @@ export default function PanelPrincipal() {
           <span className="absolute right-full mr-3 px-3 py-1 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
             Nuevo Producto
           </span>
-        </Link>
+        </button>
       </div>
 
     </div>

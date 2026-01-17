@@ -38,6 +38,8 @@ class User extends Authenticatable
         'email',
         'password',
         'tipo',
+        'avatar',
+        'telefono',
         'must_change_password',
         'email_verified_at',
         'remember_token',
@@ -54,6 +56,13 @@ class User extends Authenticatable
     ];
 
     /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = ['avatar_url'];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -65,6 +74,19 @@ class User extends Authenticatable
             'password' => 'hashed',
             'must_change_password' => 'boolean',
         ];
+    }
+
+    /**
+     * Obtener la URL completa del avatar.
+     *
+     * @return string|null
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if ($this->avatar) {
+            return asset('storage/' . $this->avatar);
+        }
+        return null;
     }
 
     /**

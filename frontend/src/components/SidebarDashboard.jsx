@@ -20,7 +20,10 @@ import {
   FaUsersCog,
   FaListUl,
   FaTruck,
-  FaAddressBook
+  FaAddressBook,
+  FaCashRegister,
+  FaHistory,
+  FaChartBar
 } from "react-icons/fa";
 import { useDashboardNavigation, DASHBOARD_SECTIONS } from "../hooks/useDashboardNavigation";
 import authService from "../services/authService";
@@ -51,14 +54,23 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
     DASHBOARD_SECTIONS.USUARIOS,
     DASHBOARD_SECTIONS.PERMISOS,
   ];
+
+  // Secciones de Ventas (nuevo submenú)
+  const ventasSections = [
+    DASHBOARD_SECTIONS.NUEVA_VENTA,
+    DASHBOARD_SECTIONS.HISTORIAL_VENTAS,
+    DASHBOARD_SECTIONS.REPORTE_DIARIO,
+  ];
   
   const isInventoryActive = inventorySections.includes(currentSection);
   const isTercerosActive = tercerosSections.includes(currentSection);
   const isAccessActive = accessSections.includes(currentSection);
+  const isVentasActive = ventasSections.includes(currentSection);
   
   const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
   const [tercerosOpen, setTercerosOpen] = useState(isTercerosActive);
   const [accessOpen, setAccessOpen] = useState(isAccessActive);
+  const [ventasOpen, setVentasOpen] = useState(isVentasActive);
 
   useEffect(() => {
     setInventoryOpen(isInventoryActive);
@@ -72,12 +84,17 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
     setAccessOpen(isAccessActive);
   }, [isAccessActive]);
 
+  useEffect(() => {
+    setVentasOpen(isVentasActive);
+  }, [isVentasActive]);
+
   // Cerrar submenús cuando se colapsa
   useEffect(() => {
     if (collapsed) {
       setInventoryOpen(false);
       setTercerosOpen(false);
       setAccessOpen(false);
+      setVentasOpen(false);
     }
   }, [collapsed]);
 
@@ -183,11 +200,46 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
           </div>
         )}
 
-        {/* FACTURACIÓN */}
-        <MenuItem section={DASHBOARD_SECTIONS.FACTURACION} icon={FaFileInvoiceDollar} label="Facturación" />
+        {/* VENTAS - Menú desplegable */}
+        <button
+          onClick={() => {
+            if (collapsed) {
+              onToggle();
+              setVentasOpen(true);
+            } else {
+              setVentasOpen((prev) => !prev);
+            }
+          }}
+          title={collapsed ? "Ventas" : ""}
+          className={`w-full flex items-center px-3 py-2 rounded-lg transition ${
+            isVentasActive ? "bg-gray-700" : "hover:bg-gray-800"
+          } ${collapsed ? "justify-center" : "justify-between"}`}
+        >
+          <span className="flex items-center gap-3">
+            <FaShoppingCart className="text-lg flex-shrink-0" />
+            {!collapsed && <span>Ventas</span>}
+          </span>
+          {!collapsed && (
+            <FaChevronRight
+              className={`transition-transform duration-200 ${
+                ventasOpen ? "rotate-90" : "rotate-0"
+              }`}
+            />
+          )}
+        </button>
 
-        {/* VENTAS */}
-        <MenuItem section={DASHBOARD_SECTIONS.VENTAS} icon={FaShoppingCart} label="Ventas" />
+        {/* Submenú de Ventas */}
+        {!collapsed && (
+          <div
+            className={`space-y-1 ml-4 overflow-hidden transition-all duration-200 ${
+              ventasOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+            }`}
+          >
+            <MenuItem section={DASHBOARD_SECTIONS.NUEVA_VENTA} icon={FaCashRegister} label="Nueva Venta" />
+            <MenuItem section={DASHBOARD_SECTIONS.HISTORIAL_VENTAS} icon={FaHistory} label="Historial de Ventas" />
+            <MenuItem section={DASHBOARD_SECTIONS.REPORTE_DIARIO} icon={FaChartBar} label="Reporte Diario" />
+          </div>
+        )}
 
         {/* TERCEROS - Clientes y Proveedores */}
         <button
@@ -270,11 +322,11 @@ export default function SidebarDashboard({ collapsed = false, onToggle }) {
                 <MenuItem section={DASHBOARD_SECTIONS.PERMISOS} icon={FaUserShield} label="Roles y Permisos" />
               </div>
             )}
+
+            {/* CONFIGURACIÓN - Solo visible para administradores */}
+            <MenuItem section={DASHBOARD_SECTIONS.CONFIGURACION} icon={FaCogs} label="Configuración" />
           </>
         )}
-
-        {/* CONFIGURACIÓN */}
-        <MenuItem section={DASHBOARD_SECTIONS.CONFIGURACION} icon={FaCogs} label="Configuración" />
       </nav>
 
       {/* CERRAR SESIÓN */}

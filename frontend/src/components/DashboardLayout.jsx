@@ -17,6 +17,10 @@ import Proveedores from "../pages/Proveedores";
 import GestionUsuarios from "../pages/GestionUsuarios";
 import GestionPermisos from "../pages/GestionPermisos";
 import PermisosUsuario from "../pages/PermisosUsuario";
+import HistorialVentas from "../pages/HistorialVentas";
+import ReporteDiario from "../pages/ReporteDiario";
+import SettingsComponent from "../pages/SettingsComponent";
+import UserProfileComponent from "../pages/UserProfileComponent";
 import Error403 from "../pages/Error403";
 import Error404 from "../pages/Error404";
 
@@ -30,11 +34,17 @@ const sectionComponents = {
   [DASHBOARD_SECTIONS.FACTURACION]: Facturacion,
   [DASHBOARD_SECTIONS.KARDEX]: Kardex,
   [DASHBOARD_SECTIONS.LOTES]: Lotes,
+  // Ventas - Nueva Venta usa Facturacion (POS)
+  [DASHBOARD_SECTIONS.NUEVA_VENTA]: Facturacion,
+  [DASHBOARD_SECTIONS.HISTORIAL_VENTAS]: HistorialVentas,
+  [DASHBOARD_SECTIONS.REPORTE_DIARIO]: ReporteDiario,
   [DASHBOARD_SECTIONS.CLIENTES]: Clientes,
   [DASHBOARD_SECTIONS.PROVEEDORES]: Proveedores,
   [DASHBOARD_SECTIONS.USUARIOS]: GestionUsuarios,
   [DASHBOARD_SECTIONS.PERMISOS]: GestionPermisos,
   [DASHBOARD_SECTIONS.PERMISOS_USUARIO]: PermisosUsuario,
+  [DASHBOARD_SECTIONS.CONFIGURACION]: SettingsComponent,
+  [DASHBOARD_SECTIONS.PERFIL]: UserProfileComponent,
   [DASHBOARD_SECTIONS.FORBIDDEN]: Error403,
   [DASHBOARD_SECTIONS.NOT_FOUND]: Error404,
 };
@@ -49,13 +59,17 @@ const sectionRoles = {
   [DASHBOARD_SECTIONS.FACTURACION]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.KARDEX]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.LOTES]: ["administrador", "empleado"],
-  [DASHBOARD_SECTIONS.VENTAS]: ["administrador", "empleado"],
+  // Ventas - Submenú
+  [DASHBOARD_SECTIONS.NUEVA_VENTA]: ["administrador", "empleado"],
+  [DASHBOARD_SECTIONS.HISTORIAL_VENTAS]: ["administrador", "empleado"],
+  [DASHBOARD_SECTIONS.REPORTE_DIARIO]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.CLIENTES]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.PROVEEDORES]: ["administrador", "empleado"],
   [DASHBOARD_SECTIONS.USUARIOS]: ["administrador"],
   [DASHBOARD_SECTIONS.PERMISOS]: ["administrador"],
   [DASHBOARD_SECTIONS.PERMISOS_USUARIO]: ["administrador"],
   [DASHBOARD_SECTIONS.CONFIGURACION]: ["administrador"],
+  [DASHBOARD_SECTIONS.PERFIL]: ["administrador", "empleado", "cliente", "proveedor"],
 };
 
 export default function DashboardLayout() {

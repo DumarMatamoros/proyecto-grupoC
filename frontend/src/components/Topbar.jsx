@@ -1,17 +1,48 @@
-import { useEffect, useState, useRef } from "react";
-import { FaUserCircle, FaCaretDown } from "react-icons/fa";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { FaCaretDown } from "react-icons/fa";
 import authService from "../services/authService";
 import { useNavigate } from "react-router-dom";
+import { useDashboardNavigation, DASHBOARD_SECTIONS } from "../hooks/useDashboardNavigation";
+import Avatar from "./Avatar";
 
 export default function Topbar() {
   const navigate = useNavigate();
+  const { navigateTo } = useDashboardNavigation();
   const menuRef = useRef(null);
 
   const [fecha, setFecha] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [user, setUser] = useState(() => authService.getUser() || { nombre: "Usuario" });
 
-  // Obtener usuario
-  const user = authService.getUser() || { nombre: "Usuario" };
+  // Función para actualizar usuario desde localStorage
+  const refreshUser = useCallback(() => {
+    const updatedUser = authService.getUser();
+    if (updatedUser) {
+      setUser(updatedUser);
+    }
+  }, []);
+
+  // Escuchar cambios en localStorage (cuando se actualiza el perfil)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === "user") {
+        refreshUser();
+      }
+    };
+
+    // Escuchar evento personalizado para actualizaciones dentro de la misma pestaña
+    const handleUserUpdate = () => {
+      refreshUser();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("userUpdated", handleUserUpdate);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("userUpdated", handleUserUpdate);
+    };
+  }, [refreshUser]);
 
   // Actualizar fecha/hora cada 1s
   useEffect(() => {
@@ -59,7 +90,11 @@ export default function Topbar() {
           className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition font-medium"
           onClick={() => setMenuOpen(!menuOpen)}
         >
-          <FaUserCircle className="text-3xl text-gray-700" />
+          <Avatar 
+            src={user.avatar_url || user.avatar} 
+            name={user.nombre} 
+            size="md"
+          />
           <span className="capitalize">{user.nombre}</span>
           <FaCaretDown className="text-gray-500" />
         </button>
@@ -70,14 +105,20 @@ export default function Topbar() {
 
             <button
               className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
-              onClick={() => navigate("/perfil")}
+              onClick={() => {
+                setMenuOpen(false);
+                navigateTo(DASHBOARD_SECTIONS.PERFIL);
+              }}
             >
               🧾 Mi Perfil
             </button>
 
             <button
               className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
-              onClick={() => navigate("/configuracion")}
+              onClick={() => {
+                setMenuOpen(false);
+                navigateTo(DASHBOARD_SECTIONS.CONFIGURACION);
+              }}
             >
               ⚙️ Configuración
             </button>
