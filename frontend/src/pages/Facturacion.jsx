@@ -36,7 +36,7 @@ import {
   CONSUMIDOR_FINAL_NOMBRE,
 } from "../services/facturaService";
 import useToast from "../hooks/useToast";
-import { translateError } from "../utils/errorTranslator";
+import { getErrorMessage } from "../utils/errorTranslator";
 
 export default function Facturacion() {
   const toast = useToast();
@@ -119,7 +119,7 @@ export default function Facturacion() {
       setIvaConfig(ivaRes);
       setCategorias(categoriasRes.data?.data || categoriasRes.data || []);
     } catch (error) {
-      toast.error(translateError(error));
+      toast.error(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -508,7 +508,9 @@ export default function Facturacion() {
       setModalNuevo(false);
       setShowPaymentModal(false);
     } catch (error) {
-      toast.error(translateError(error));
+      console.error("Error al crear factura:", error);
+      console.error("Response data:", error.response?.data);
+      toast.error(getErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -551,39 +553,43 @@ export default function Facturacion() {
 
   // Renderizar vista POS (Punto de Venta) - Estilo Profesional
   const renderVistaPOS = () => (
-    <div className="flex flex-col lg:flex-row gap-0 bg-gray-900 rounded-xl overflow-hidden shadow-2xl" style={{ height: fullscreen ? "calc(100vh - 80px)" : "calc(100vh - 200px)", maxHeight: fullscreen ? "none" : "750px" }}>
+    <div 
+      className={`flex flex-col lg:flex-row gap-0 bg-gray-900 rounded-xl overflow-hidden shadow-2xl ${
+        fullscreen ? "h-[calc(100vh-100px)]" : "h-[calc(100vh-180px)]"
+      }`} 
+      style={{ minHeight: "400px" }}
+    >
       
       {/* Panel izquierdo - Carrito y Checkout */}
-      <div className="w-full lg:w-[420px] xl:w-[480px] flex flex-col bg-gray-800">
+      <div className="w-full lg:w-[380px] xl:w-[420px] flex flex-col bg-gray-800 overflow-hidden">
         
         {/* Header del carrito */}
-        <div className="px-4 py-4 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FaShoppingCart className="text-xl text-white" />
-            <span className="font-bold text-white text-lg">Venta Actual</span>
+        <div className="flex-shrink-0 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FaShoppingCart className="text-lg text-white" />
+            <span className="font-bold text-white text-base">Venta Actual</span>
           </div>
-          <span className="text-sm text-blue-200">{carrito.length} producto(s)</span>
+          <span className="text-xs text-blue-200">{carrito.length} item(s)</span>
         </div>
 
         {/* Botón limpiar carrito */}
         {carrito.length > 0 && (
-          <div className="px-3 py-2 bg-gray-100 border-b flex justify-end">
+          <div className="flex-shrink-0 px-2 py-1 bg-gray-100 border-b flex justify-end">
             <button
               onClick={() => setCarrito([])}
-              className="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+              className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 transition-colors cursor-pointer"
             >
-              <FaTrash /> Vaciar carrito
+              <FaTrash className="text-xs" /> Vaciar
             </button>
           </div>
         )}
 
-        {/* Lista de items del carrito - Estilo lista simple */}
-        <div className="flex-1 overflow-y-auto bg-white">
+        {/* Lista de items del carrito */}
+        <div className="flex-1 overflow-y-auto bg-white min-h-0">
           {carrito.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 py-12">
-              <FaShoppingCart className="text-5xl mb-3 text-gray-300" />
-              <p className="text-sm">No hay productos en la venta</p>
-              <p className="text-xs text-gray-400 mt-1">Seleccione productos del catálogo</p>
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 py-6">
+              <FaShoppingCart className="text-4xl mb-2 text-gray-300" />
+              <p className="text-xs">No hay productos</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -632,40 +638,38 @@ export default function Facturacion() {
         </div>
 
         {/* Sección de cliente - Compacta */}
-        <div className="bg-gray-100 px-4 py-3 border-t">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
-              <FaUser className="text-gray-500" /> Cliente
+        <div className="flex-shrink-0 bg-gray-100 px-2 py-1.5 border-t">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-medium text-gray-700 flex items-center gap-1">
+              <FaUser className="text-gray-500 text-xs" /> Cliente
               {buscandoCliente && (
-                <span className="text-xs text-blue-500 animate-pulse">Buscando...</span>
+                <span className="text-xs text-blue-500 animate-pulse">...</span>
               )}
               {clienteEncontrado && !formCliente.esConsumidorFinal && (
-                <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
-                  ✓ Registrado
-                </span>
+                <span className="text-xs text-green-600">✓</span>
               )}
             </span>
             <button
               onClick={toggleConsumidorFinal}
-              className={`text-xs px-3 py-1 rounded-full transition-colors font-medium cursor-pointer ${
+              className={`text-xs px-2 py-0.5 rounded-full transition-colors font-medium cursor-pointer ${
                 formCliente.esConsumidorFinal
                   ? "bg-green-500 text-white"
                   : "bg-gray-300 text-gray-600 hover:bg-gray-400"
               }`}
             >
-              {formCliente.esConsumidorFinal ? "✓ Consumidor Final" : "Consumidor Final"}
+              {formCliente.esConsumidorFinal ? "✓ C. Final" : "C. Final"}
             </button>
           </div>
           
           {/* Campos de identificación y nombre */}
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <div className="flex-1 relative">
               <input
                 type="text"
                 value={formCliente.cedula_cliente}
                 onChange={(e) => setFormCliente({ ...formCliente, cedula_cliente: e.target.value })}
                 disabled={formCliente.esConsumidorFinal}
-                className={`w-full text-sm border rounded-lg px-3 py-2 ${
+                className={`w-full text-xs border rounded px-2 py-1.5 ${
                   documentoValido
                     ? documentoValido.valid
                       ? clienteEncontrado 
@@ -678,8 +682,8 @@ export default function Facturacion() {
                 maxLength={13}
               />
               {buscandoCliente && (
-                <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                  <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                 </div>
               )}
             </div>
@@ -688,7 +692,7 @@ export default function Facturacion() {
               value={formCliente.nombre_cliente}
               onChange={(e) => setFormCliente({ ...formCliente, nombre_cliente: e.target.value })}
               disabled={formCliente.esConsumidorFinal || clienteEncontrado}
-              className={`flex-1 text-sm border rounded-lg px-3 py-2 ${
+              className={`flex-1 text-xs border rounded px-2 py-1.5 ${
                 clienteEncontrado && !formCliente.esConsumidorFinal
                   ? "border-green-400 bg-green-50"
                   : "border-gray-300 bg-white"
@@ -709,16 +713,16 @@ export default function Facturacion() {
           {mostrarFormCrearCliente && documentoValido?.valid && !formCliente.esConsumidorFinal && !clienteEncontrado && (
             <button
               onClick={() => setModalCrearCliente(true)}
-              className="mt-2 w-full bg-yellow-500 hover:bg-yellow-600 text-white text-sm py-2 rounded-lg font-medium transition cursor-pointer flex items-center justify-center gap-2"
+              className="mt-1 w-full bg-yellow-500 hover:bg-yellow-600 text-white text-xs py-1.5 rounded font-medium transition cursor-pointer flex items-center justify-center gap-1"
             >
               <FaPlus className="text-xs" />
-              Cliente no registrado - Crear nuevo
+              Crear cliente
             </button>
           )}
         </div>
 
         {/* Formas de pago */}
-        <div className="bg-gray-200 px-4 py-2">
+        <div className="flex-shrink-0 bg-gray-200 px-2 py-1.5">
           <div className="flex gap-1">
             {Object.entries(FORMAS_PAGO).map(([key, label]) => {
               const Icon = iconosFormaPago[key] || FaMoneyBillWave;
@@ -726,14 +730,14 @@ export default function Facturacion() {
                 <button
                   key={key}
                   onClick={() => setFormaPago(key)}
-                  className={`flex-1 p-2 rounded-lg transition-all cursor-pointer ${
+                  className={`flex-1 p-1.5 rounded transition-all cursor-pointer ${
                     formaPago === key
                       ? "bg-blue-600 text-white shadow-md"
                       : "bg-white text-gray-500 hover:bg-gray-50"
                   }`}
                   title={label}
                 >
-                  <Icon className="mx-auto text-lg" />
+                  <Icon className="mx-auto text-sm" />
                 </button>
               );
             })}
@@ -741,55 +745,56 @@ export default function Facturacion() {
         </div>
 
         {/* Selector de tipo de documento */}
-        <div className="bg-gray-100 px-4 py-3 border-t">
-          <label className="block text-xs font-medium text-gray-500 mb-2">TIPO DE DOCUMENTO</label>
-          <div className="flex gap-2">
+        <div className="flex-shrink-0 bg-gray-100 px-2 py-1.5 border-t">
+          <div className="flex gap-1">
             <button
               onClick={() => setTipoDocumento("factura")}
-              className={`flex-1 py-2.5 px-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              className={`flex-1 py-1.5 px-2 rounded font-medium text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
                 tipoDocumento === "factura"
                   ? "bg-blue-600 text-white shadow-md"
                   : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
               }`}
             >
-              <FaFileInvoiceDollar className={tipoDocumento === "factura" ? "text-white" : "text-blue-500"} />
+              <FaFileInvoiceDollar className={`text-xs ${tipoDocumento === "factura" ? "text-white" : "text-blue-500"}`} />
               Factura
             </button>
             <button
               onClick={() => setTipoDocumento("nota_venta")}
-              className={`flex-1 py-2.5 px-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              className={`flex-1 py-1.5 px-2 rounded font-medium text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
                 tipoDocumento === "nota_venta"
                   ? "bg-purple-600 text-white shadow-md"
                   : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
               }`}
             >
-              <FaFileAlt className={tipoDocumento === "nota_venta" ? "text-white" : "text-purple-500"} />
-              Nota de Venta
+              <FaFileAlt className={`text-xs ${tipoDocumento === "nota_venta" ? "text-white" : "text-purple-500"}`} />
+              Nota Venta
             </button>
           </div>
         </div>
 
         {/* Totales y botón de cobro */}
-        <div className="bg-gray-900 px-4 py-4 text-white">
-          <div className="space-y-1 mb-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Subtotal:</span>
-              <span>{formatCurrency(totalesCarrito.subtotal)}</span>
+        <div className="flex-shrink-0 bg-gray-900 px-2 py-2 text-white">
+          <div className="flex justify-between items-center mb-1.5">
+            <div className="text-xs space-y-0.5">
+              <div className="flex gap-2">
+                <span className="text-gray-400">Subtotal:</span>
+                <span>{formatCurrency(totalesCarrito.subtotal)}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-gray-400">IVA:</span>
+                <span className="text-green-400">{formatCurrency(totalesCarrito.totalIva)}</span>
+              </div>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">IVA ({ivaConfig}%):</span>
-              <span className="text-green-400">{formatCurrency(totalesCarrito.totalIva)}</span>
-            </div>
-            <div className="flex justify-between text-2xl font-bold pt-2 border-t border-gray-700">
-              <span>TOTAL:</span>
-              <span className="text-green-400">{formatCurrency(totalesCarrito.total)}</span>
+            <div className="text-right">
+              <div className="text-xs text-gray-400">TOTAL</div>
+              <div className="text-xl font-bold text-green-400">{formatCurrency(totalesCarrito.total)}</div>
             </div>
           </div>
           
           <button
             onClick={handleAbrirPago}
             disabled={saving || carrito.length === 0}
-            className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-colors shadow-lg cursor-pointer"
+            className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white py-2.5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-lg cursor-pointer"
           >
             {saving ? (
               <>
@@ -807,23 +812,23 @@ export default function Facturacion() {
       </div>
 
       {/* Panel derecho - Catálogo de Productos */}
-      <div className="flex-1 flex flex-col bg-gray-100 min-w-0">
+      <div className="flex-1 flex flex-col bg-gray-100 min-w-0 overflow-hidden">
         
         {/* Header del catálogo */}
-        <div className="px-4 py-4 bg-gradient-to-r from-cyan-600 to-cyan-700 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FaBoxOpen className="text-xl text-white" />
-            <span className="font-bold text-white text-lg">Productos</span>
+        <div className="flex-shrink-0 px-3 py-2 bg-gradient-to-r from-cyan-600 to-cyan-700 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FaBoxOpen className="text-lg text-white" />
+            <span className="font-bold text-white text-base">Productos</span>
           </div>
-          <span className="text-sm text-cyan-200">
+          <span className="text-xs text-cyan-200">
             {productos.filter(p => p.stock_actual > 0).length} disponibles
           </span>
         </div>
 
         {/* Barra de búsqueda - Optimizada para lector de códigos de barras */}
-        <div className="p-3 bg-white border-b flex items-center gap-2">
+        <div className="flex-shrink-0 px-2 py-1.5 bg-white border-b flex items-center gap-2">
           <div className="relative flex-1">
-            <FaBarcode className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <FaBarcode className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
             <input
               ref={inputBusquedaRef}
               type="text"
@@ -831,7 +836,7 @@ export default function Facturacion() {
               onChange={(e) => setBusquedaProducto(e.target.value)}
               onKeyDown={handleBusquedaKeyDown}
               placeholder="Escanear código o buscar..."
-              className="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-200 transition-all"
+              className="w-full pl-7 pr-6 py-1.5 border border-gray-300 rounded text-xs focus:border-cyan-500 focus:ring-1 focus:ring-cyan-200 transition-all"
               autoComplete="off"
             />
             {busquedaProducto && (
@@ -840,36 +845,36 @@ export default function Facturacion() {
                   setBusquedaProducto("");
                   inputBusquedaRef.current?.focus();
                 }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
               >
-                <FaTimes className="text-sm" />
+                <FaTimes className="text-xs" />
               </button>
             )}
           </div>
-          <span className="text-xs text-gray-400 whitespace-nowrap">Enter ↵</span>
+          <span className="text-xs text-gray-400 whitespace-nowrap">↵</span>
         </div>
 
         {/* Filtros por Categoría */}
-        <div className="px-3 py-2 bg-white border-b overflow-x-auto">
-          <div className="flex gap-2 min-w-max">
+        <div className="flex-shrink-0 px-2 py-1 bg-white border-b overflow-x-auto">
+          <div className="flex gap-1 min-w-max">
             <button
               onClick={() => setCategoriaFiltro("todas")}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
                 categoriaFiltro === "todas"
-                  ? "bg-cyan-600 text-white shadow-md"
+                  ? "bg-cyan-600 text-white shadow-sm"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              <FaTags className="inline-block mr-1.5 text-xs" />
+              <FaTags className="inline-block mr-1 text-xs" />
               Todas
             </button>
             {categorias.map((cat) => (
               <button
                 key={cat.categoria_id || cat.id}
                 onClick={() => setCategoriaFiltro(cat.categoria_id || cat.id)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
                   categoriaFiltro === (cat.categoria_id || cat.id)
-                    ? "bg-cyan-600 text-white shadow-md"
+                    ? "bg-cyan-600 text-white shadow-sm"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
@@ -880,7 +885,7 @@ export default function Facturacion() {
         </div>
 
         {/* Grid de productos */}
-        <div className="flex-1 p-3 overflow-y-auto">
+        <div className="flex-1 p-2 overflow-y-auto min-h-0">
           {(() => {
             // Filtrar por stock y por búsqueda en tiempo real
             let productosDisponibles = productos.filter(p => p.stock_actual > 0);
@@ -910,8 +915,8 @@ export default function Facturacion() {
             if (productos.filter(p => p.stock_actual > 0).length === 0) {
               return (
                 <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                  <FaBoxOpen className="text-5xl mb-3" />
-                  <p className="text-lg">No hay productos disponibles</p>
+                  <FaBoxOpen className="text-4xl mb-2" />
+                  <p className="text-sm">No hay productos disponibles</p>
                 </div>
               );
             }
@@ -919,34 +924,34 @@ export default function Facturacion() {
             if (productosDisponibles.length === 0 && busquedaProducto.trim()) {
               return (
                 <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                  <FaSearch className="text-5xl mb-3" />
-                  <p className="text-lg">No se encontraron productos</p>
-                  <p className="text-sm">para "{busquedaProducto}"</p>
+                  <FaSearch className="text-4xl mb-2" />
+                  <p className="text-sm">No se encontraron productos</p>
+                  <p className="text-xs">para "{busquedaProducto}"</p>
                 </div>
               );
             }
 
             return (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
                   {productosPagina.map((producto) => (
                     <button
                       key={producto.producto_id}
                       onClick={() => agregarAlCarrito(producto.producto_id.toString())}
-                      className="bg-white rounded-xl p-3 shadow-sm border-2 border-transparent hover:border-blue-400 hover:shadow-lg transition-all text-left group relative overflow-hidden cursor-pointer"
+                      className="bg-white rounded-lg p-2 shadow-sm border border-transparent hover:border-blue-400 hover:shadow-md transition-all text-left group relative overflow-hidden cursor-pointer"
                     >
                       {/* Badge de stock */}
-                      <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+                      <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold text-[10px]">
                         {producto.stock_actual}
                       </div>
                       
                       {/* Imagen del producto */}
-                      <div className="mb-2 aspect-square">
+                      <div className="mb-1.5 aspect-square">
                         {producto.imagen ? (
                           <img
                             src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}/storage/${producto.imagen}`}
                             alt={producto.nombre}
-                            className="w-full h-full object-cover rounded-lg bg-gray-100"
+                            className="w-full h-full object-cover rounded bg-gray-100"
                             onError={(e) => {
                               e.target.style.display = 'none';
                               e.target.nextSibling.style.display = 'flex';
@@ -954,20 +959,20 @@ export default function Facturacion() {
                           />
                         ) : null}
                         <div
-                          className={`w-full h-full bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center ${producto.imagen ? 'hidden' : ''}`}
+                          className={`w-full h-full bg-gradient-to-br from-blue-100 to-blue-200 rounded flex items-center justify-center ${producto.imagen ? 'hidden' : ''}`}
                         >
-                          <FaBarcode className="text-3xl text-blue-400" />
+                          <FaBarcode className="text-2xl text-blue-400" />
                         </div>
                       </div>
                       
                       {/* Info del producto */}
-                      <p className="font-semibold text-gray-800 text-sm truncate mb-1" title={producto.nombre}>
+                      <p className="font-semibold text-gray-800 text-xs truncate" title={producto.nombre}>
                         {producto.nombre}
                       </p>
-                      <p className="text-xs text-gray-500 truncate mb-1">
+                      <p className="text-[10px] text-gray-500 truncate">
                         {producto.codigo_principal || 'Sin código'}
                       </p>
-                      <p className="text-blue-600 font-bold text-lg">
+                      <p className="text-blue-600 font-bold text-sm">
                         {formatCurrency(producto.precio_unitario)}
                       </p>
                     </button>
@@ -976,23 +981,23 @@ export default function Facturacion() {
 
                 {/* Paginación */}
                 {totalPaginas > 1 && (
-                  <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t">
+                  <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t">
                     <button
                       onClick={() => setPaginaProductosPOS(p => Math.max(1, p - 1))}
                       disabled={paginaProductosPOS === 1}
-                      className="px-4 py-2 rounded-lg bg-white shadow hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                      className="px-2 py-1 rounded bg-white shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer text-xs"
                     >
-                      <FaChevronLeft /> Anterior
+                      <FaChevronLeft className="text-xs" /> Ant
                     </button>
-                    <span className="text-sm text-gray-600 font-medium">
-                      Página {paginaProductosPOS} de {totalPaginas}
+                    <span className="text-xs text-gray-600 font-medium">
+                      {paginaProductosPOS}/{totalPaginas}
                     </span>
                     <button
                       onClick={() => setPaginaProductosPOS(p => Math.min(totalPaginas, p + 1))}
                       disabled={paginaProductosPOS === totalPaginas}
-                      className="px-4 py-2 rounded-lg bg-white shadow hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                      className="px-2 py-1 rounded bg-white shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer text-xs"
                     >
-                      Siguiente <FaChevronRight />
+                      Sig <FaChevronRight className="text-xs" />
                     </button>
                   </div>
                 )}

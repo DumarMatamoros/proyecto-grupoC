@@ -173,6 +173,11 @@ export function getErrorMessage(errorResponse) {
     return 'Ocurrió un error desconocido.';
   }
 
+  // Si hay un campo 'error' específico del backend (ej: { message: "...", error: "detalle" })
+  if (errorResponse.response?.data?.error) {
+    return translateError(errorResponse.response.data.error);
+  }
+
   // Si es un objeto de error de axios/fetch
   if (errorResponse.response?.data?.message) {
     return translateError(errorResponse.response.data.message);
