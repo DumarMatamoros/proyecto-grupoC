@@ -2,19 +2,23 @@
 
 Guía corta para levantar todo con Docker sin instalar PHP ni Node en tu máquina.
 
+
 ## 1) Requisitos previos
 - Docker Desktop instalado y corriendo.
 - Puertos libres: 5432 (Postgres), 8000 (API), 5173 (frontend).
+
 
 ## 2) Qué contienen los servicios
 - `db` → Postgres 15 con DB `DBgrupoC`, usuario `postgres` / `postgres`.
 - `backend` → Laravel sobre php:8.4-apache. Expone 80 → host 8000.
 - `frontend` → Vite/React. Expone 5173.
 
+
 ## 2.1) docker-compose usado
 Archivo completo: [docker-compose.yml](../docker-compose.yml)
 
 ```yaml
+
 services:
 	frontend:
 		build: ./frontend
@@ -44,10 +48,12 @@ services:
 			- "5432:5432"
 ```
 
+
 Notas:
 - Los puertos expuestos en host son 5173 (frontend), 8000 (API) y 5432 (Postgres).
 - Los volúmenes del frontend montan el código local y preservan `node_modules` dentro del contenedor.
 - Las credenciales de DB se referencian en `backend/.env` (sección 3).
+
 
 ## 3) Preparar variables de entorno
 En `backend/.env` usa las credenciales del servicio `db`:
@@ -61,6 +67,7 @@ DB_PASSWORD=postgres
 ```
 (Ya quedan listas en este repo; ajusta solo si cambias credenciales.)
 
+
 ## 4) Construir y levantar
 Desde la raíz del proyecto:
 ```powershell
@@ -73,6 +80,7 @@ Verifica que estén arriba:
 docker compose ps
 ```
 
+
 ## 5) Migraciones y seeders (primer arranque)
 Corre dentro del contenedor backend:
 ```powershell
@@ -84,6 +92,7 @@ Esto crea tablas y datos de prueba (roles, permisos, admin, catálogos, etc.).
 - API: http://localhost:8000
 - Frontend: http://localhost:5173
 
+
 ## 7) Comandos útiles
 - Logs backend: `docker compose logs -f backend`
 - Logs db: `docker compose logs -f db`
@@ -91,12 +100,14 @@ Esto crea tablas y datos de prueba (roles, permisos, admin, catálogos, etc.).
 - Limpiar caché de Laravel: `docker compose exec backend php artisan config:clear`
 - Reconstruir todo: `docker compose up -d --build`
 
+
 ## 8) Problemas frecuentes
 - **DB_HOST en 127.0.0.1** → debe ser `db` dentro de Docker.
 - **Configuración cacheada** → `docker compose exec backend php artisan config:clear` y reinicia.
 - **Credenciales cambiadas** → actualiza `backend/.env` y recrea contenedores (`docker compose up -d --build`).
 
 Listo: con estos pasos el stack queda levantado solo con Docker.
+
 
 ## 9) Dockerfiles usados
 
@@ -131,3 +142,4 @@ RUN npm install
 EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host"]
 ```
+

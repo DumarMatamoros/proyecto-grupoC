@@ -49,6 +49,7 @@ Authorization: Bearer {{token}}
 
 --------------------------------------------------
 
+
 ### Crear Factura – Consumidor Final
 POST http://localhost:8000/api/facturas
 Authorization: Bearer {{token}}
@@ -68,17 +69,20 @@ Authorization: Bearer {{token}}
 
 --------------------------------------------------
 
+
 ### Listar Facturas
 GET http://localhost:8000/api/facturas
 Authorization: Bearer {{token}}
 
 --------------------------------------------------
 
+
 ### Ver Factura (ID = 1)
 GET http://localhost:8000/api/facturas/1
 Authorization: Bearer {{token}}
 
 --------------------------------------------------
+
 
 ### Actualizar Factura
 PUT http://localhost:8000/api/facturas/1
@@ -90,19 +94,21 @@ Authorization: Bearer {{token}}
 
 --------------------------------------------------
 
+
 ### Eliminar Factura
 DELETE http://localhost:8000/api/facturas/1
 Authorization: Bearer {{token}}
 
 ==================================================
 
-## 👨‍💼 ADMIN · USUARIOS
 
+## 👨‍💼 ADMIN · USUARIOS
 ### Dashboard
 GET http://localhost:8000/api/admin/dashboard
 Authorization: Bearer {{token}}
 
 --------------------------------------------------
+
 
 ### Listar Usuarios
 GET http://localhost:8000/api/admin/usuarios
@@ -110,17 +116,20 @@ Authorization: Bearer {{token}}
 
 --------------------------------------------------
 
+
 ### Listar Solo Clientes
 GET http://localhost:8000/api/admin/usuarios?tipo=cliente
 Authorization: Bearer {{token}}
 
 --------------------------------------------------
 
+
 ### Ver Usuario (ID = 1)
 GET http://localhost:8000/api/admin/usuarios/1
 Authorization: Bearer {{token}}
 
 --------------------------------------------------
+
 
 ### Registrar Cliente
 POST http://localhost:8000/api/auth/register
@@ -139,6 +148,7 @@ POST http://localhost:8000/api/auth/register
 
 --------------------------------------------------
 
+
 ### Registrar Administrador
 POST http://localhost:8000/api/auth/register
 
@@ -155,6 +165,7 @@ POST http://localhost:8000/api/auth/register
 }
 
 --------------------------------------------------
+
 
 ### Registrar Empleado
 POST http://localhost:8000/api/auth/register
@@ -173,6 +184,7 @@ POST http://localhost:8000/api/auth/register
 
 --------------------------------------------------
 
+
 ### Actualizar Usuario
 PUT http://localhost:8000/api/admin/usuarios/1
 Authorization: Bearer {{token}}
@@ -184,17 +196,20 @@ Authorization: Bearer {{token}}
 
 --------------------------------------------------
 
+
 ### Eliminar Usuario
 DELETE http://localhost:8000/api/admin/usuarios/22
 Authorization: Bearer {{token}}
 
 --------------------------------------------------
 
+
 ### Mi Información (Admin)
 GET http://localhost:8000/api/admin/info
 Authorization: Bearer {{token}}
 
 --------------------------------------------------
+
 
 ### Actualizar Mi Perfil
 PUT http://localhost:8000/api/auth/perfil
@@ -207,6 +222,7 @@ Authorization: Bearer {{token}}
 
 ==================================================
 
+
 ## ⚙️ CONFIGURACIONES
 
 ### Ver IVA (Público)
@@ -214,11 +230,13 @@ GET http://localhost:8000/api/config/iva
 
 --------------------------------------------------
 
+
 ### Listar Configuraciones
 GET http://localhost:8000/api/admin/configuraciones
 Authorization: Bearer {{token}}
 
 --------------------------------------------------
+
 
 ### Cambiar IVA (15%)
 PUT http://localhost:8000/api/admin/configuraciones-iva
@@ -229,6 +247,7 @@ Authorization: Bearer {{token}}
 }
 
 ==================================================
+
 
 ## 🗄️ POSTGRESQL · CONSULTAS
 
@@ -249,6 +268,7 @@ UPDATE usuarios SET tipo = 'administrador' WHERE usuario_id = 5;
 SELECT * FROM administradores;
 
 ==================================================
+
 
 ## ✅ CHECKLIST
 
