@@ -1,0 +1,53 @@
+services:
+  # Backend Laravel
+  - type: web
+    name: inventario-api
+    runtime: php
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        fromService:
+          name: inventario-api
+          type: web
+          property: host
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: inventario-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: inventario-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: inventario-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: inventario-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: inventario-db
+          property: password
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: CACHE_STORE
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+
+databases:
+  - name: inventario-db
+    databaseName: inventario_facturacion
+    user: inventario_user
+    plan: free
