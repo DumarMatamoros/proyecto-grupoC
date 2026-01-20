@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('empleado_id')->nullable()->change();
             
             // Campos adicionales para Ecuador
-            $table->string('numero_factura')->nullable()->after('clave_acceso');
+            $table->string('numero_factura', 15)->nullable()->after('clave_acceso');
             $table->string('cedula_cliente', 13)->nullable()->after('estado');
             $table->string('nombre_cliente')->nullable()->after('cedula_cliente');
             $table->string('direccion_cliente')->nullable()->after('nombre_cliente');
