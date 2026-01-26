@@ -10,8 +10,6 @@ Este repositorio contiene la interfaz de usuario desarrollada en **React** con *
 ## 🛠️ Tecnologías
 * React.js
 * Vite
-* Tailwind CSS (si lo usas)
-* Axios (para consumo de API)
 
 ## ⚙️ Configuración de Entorno
 Para que el frontend funcione, se debe configurar la siguiente variable en el panel de Vercel:
@@ -39,3 +37,4 @@ Para validar el estado del sistema en el servidor:
 
 ## 📍 Ubicación del Despliegue
 A diferencia del frontend, este componente se encuentra en un servidor **On-premise** para control total de los datos y la lógica de facturación.
+
